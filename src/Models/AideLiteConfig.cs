@@ -23,4 +23,7 @@ public class AideLiteConfig
 
     [JsonPropertyName("maxTokens")]
     public int MaxTokens { get; set; } = 8192;
+
+    [JsonPropertyName("theme")]
+    public string Theme { get; set; } = "light";
 }

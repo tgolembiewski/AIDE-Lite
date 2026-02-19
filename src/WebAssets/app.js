@@ -19,6 +19,7 @@
     var streamElement = null;
     var cumulativeInputTokens = 0;
     var cumulativeOutputTokens = 0;
+    var currentTheme = 'light';
 
     // --- DOM References ---
     var chatArea = document.getElementById('chatArea');
@@ -39,6 +40,8 @@
     var welcomeScreen = document.getElementById('welcomeScreen');
     var processingBar = document.getElementById('processingBar');
     var processingLabel = document.getElementById('processingLabel');
+    var themeToggleBtn = document.getElementById('themeToggleBtn');
+    var themeSelect = document.getElementById('themeSelect');
 
     // --- WebView Bridge (C# <-> JS messaging) ---
     function sendToBackend(type, payload) {
@@ -355,6 +358,7 @@
         if (data.contextDepth) document.getElementById('contextDepthSelect').value = data.contextDepth;
         if (data.maxTokens) document.getElementById('maxTokensInput').value = data.maxTokens;
         if (data.hasKey) document.getElementById('apiKeyInput').placeholder = '********** (key saved)';
+        if (data.theme) applyTheme(data.theme);
     }
 
     function handleSettingsSaved(data) {
@@ -366,15 +370,18 @@
         var model = document.getElementById('modelSelect').value;
         var depth = document.getElementById('contextDepthSelect').value;
         var tokens = parseInt(document.getElementById('maxTokensInput').value) || 8192;
+        var theme = themeSelect ? themeSelect.value : currentTheme;
 
         sendToBackend('save_settings', {
             apiKey: apiKey,
             selectedModel: model,
             contextDepth: depth,
-            maxTokens: tokens
+            maxTokens: tokens,
+            theme: theme
         });
 
         updateModelBadge(model);
+        applyTheme(theme);
     }
 
     function updateModelBadge(model) {
@@ -384,6 +391,19 @@
             'claude-haiku-4-5-20251001': 'Haiku 4.5'
         };
         modelBadge.textContent = labels[model] || model;
+    }
+
+    // --- Theme ---
+    function applyTheme(theme) {
+        currentTheme = theme === 'dark' ? 'dark' : 'light';
+        document.body.classList.toggle('dark', currentTheme === 'dark');
+        if (themeToggleBtn) {
+            themeToggleBtn.innerHTML = currentTheme === 'dark' ? '&#x2600;' : '&#x1F319;';
+            themeToggleBtn.title = currentTheme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+        }
+        if (themeSelect) {
+            themeSelect.value = currentTheme;
+        }
     }
 
     // --- Markdown Rendering ---
@@ -529,6 +549,23 @@
     settingsBtn.addEventListener('click', openSettings);
     saveSettingsBtn.addEventListener('click', saveSettings);
     cancelSettingsBtn.addEventListener('click', closeSettings);
+
+    // Theme toggle button (header quick-toggle)
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', function () {
+            var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+            // Persist theme-only save (null guards in SaveConfig protect other settings)
+            sendToBackend('save_settings', { theme: newTheme });
+        });
+    }
+
+    // Live preview: apply theme immediately when dropdown changes in settings modal
+    if (themeSelect) {
+        themeSelect.addEventListener('change', function () {
+            applyTheme(this.value);
+        });
+    }
 
     // Close modal on overlay click
     document.querySelector('.modal-overlay')?.addEventListener('click', closeSettings);

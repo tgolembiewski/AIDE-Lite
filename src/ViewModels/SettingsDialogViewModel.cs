@@ -94,7 +94,8 @@ public class SettingsDialogViewModel : WebViewModalDialogViewModel
             hasKey = _configService.HasApiKey(),
             selectedModel = config.SelectedModel,
             contextDepth = config.ContextDepth,
-            maxTokens = config.MaxTokens
+            maxTokens = config.MaxTokens,
+            theme = config.Theme
         });
     }
 
@@ -103,13 +104,14 @@ public class SettingsDialogViewModel : WebViewModalDialogViewModel
         var apiKey = data?["apiKey"]?.GetValue<string>();
         var model = data?["selectedModel"]?.GetValue<string>();
         var depth = data?["contextDepth"]?.GetValue<string>();
+        var theme = data?["theme"]?.GetValue<string>();
         int? tokens = null;
         if (data?["maxTokens"] != null)
         {
             tokens = data["maxTokens"]!.GetValue<int>();
         }
 
-        _configService.SaveConfig(apiKey, model, depth, tokens);
+        _configService.SaveConfig(apiKey, model, depth, tokens, theme);
         SendToWebView("settings_saved", new { success = true });
         _dialogService.CloseDialog(this);
     }

@@ -64,7 +64,7 @@ public class ConfigurationService
 
     public bool HasApiKey() => !string.IsNullOrEmpty(GetConfig().EncryptedApiKey);
 
-    public void SaveConfig(string? apiKey, string? selectedModel, string? contextDepth, int? maxTokens)
+    public void SaveConfig(string? apiKey, string? selectedModel, string? contextDepth, int? maxTokens, string? theme = null)
     {
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
@@ -79,6 +79,9 @@ public class ConfigurationService
 
         if (maxTokens.HasValue && maxTokens.Value >= 256)
             _cachedConfig.MaxTokens = maxTokens.Value;
+
+        if (theme is "light" or "dark")
+            _cachedConfig.Theme = theme;
 
         SaveToDisk(_cachedConfig);
         _logService.Info("AIDE Lite: Configuration saved");

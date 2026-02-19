@@ -8,7 +8,7 @@
 <head>
     <meta charset="UTF-8">
     <title>AIDE Lite Settings</title>
-    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body class="settings-body">
     <div class="settings-container">
@@ -36,6 +36,13 @@
             <label for="maxTokensInput">Max Response Tokens</label>
             <input type="number" id="maxTokensInput" value="8192" min="256" max="128000">
         </div>
+        <div class="form-group">
+            <label for="themeSelect">Theme</label>
+            <select id="themeSelect">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+            </select>
+        </div>
         <div class="modal-actions">
             <button id="saveSettingsBtn" class="primary-btn">Save</button>
             <button id="cancelSettingsBtn" class="secondary-btn">Cancel</button>
@@ -60,6 +67,11 @@
                 if (data.contextDepth) document.getElementById('contextDepthSelect').value = data.contextDepth;
                 if (data.maxTokens) document.getElementById('maxTokensInput').value = data.maxTokens;
                 if (data.hasKey) document.getElementById('apiKeyInput').placeholder = '********** (key saved)';
+                if (data.theme) {
+                    document.getElementById('themeSelect').value = data.theme;
+                    document.body.classList.toggle('dark', data.theme === 'dark');
+                    document.body.classList.toggle('settings-body', true);
+                }
             }
             if (type === 'settings_saved') {
                 // Dialog is closed by C# backend after saving
@@ -71,7 +83,8 @@
                 apiKey: document.getElementById('apiKeyInput').value,
                 selectedModel: document.getElementById('modelSelect').value,
                 contextDepth: document.getElementById('contextDepthSelect').value,
-                maxTokens: parseInt(document.getElementById('maxTokensInput').value) || 8192
+                maxTokens: parseInt(document.getElementById('maxTokensInput').value) || 8192,
+                theme: document.getElementById('themeSelect').value
             });
         });
 

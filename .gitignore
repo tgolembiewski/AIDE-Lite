@@ -5,3 +5,5 @@ obj/
 .vs/
 .chat-history/
 CLAUDE.md
+.claude/
+docs/

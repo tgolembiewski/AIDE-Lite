@@ -9,7 +9,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIDE Lite</title>
-    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
     <div class="app-container">
@@ -22,6 +22,7 @@
                 <span class="token-badge hidden" id="tokenBadge"></span>
             </div>
             <div class="header-actions">
+                <button id="themeToggleBtn" class="icon-btn" title="Toggle Dark Mode">&#x1F319;</button>
                 <button id="refreshBtn" class="icon-btn" title="Refresh App Context">&#x21bb;</button>
                 <button id="newChatBtn" class="icon-btn" title="New Chat">&#x2795;</button>
                 <button id="settingsBtn" class="icon-btn" title="Settings">&#x2699;</button>
@@ -104,6 +105,13 @@
                 <label for="maxTokensInput">Max Response Tokens</label>
                 <input type="number" id="maxTokensInput" value="8192" min="256" max="128000">
             </div>
+            <div class="form-group">
+                <label for="themeSelect">Theme</label>
+                <select id="themeSelect">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
             <div class="modal-actions">
                 <button id="saveSettingsBtn" class="primary-btn">Save</button>
                 <button id="cancelSettingsBtn" class="secondary-btn">Cancel</button>
@@ -111,6 +119,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>
