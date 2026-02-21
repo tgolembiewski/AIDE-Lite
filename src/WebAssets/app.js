@@ -152,11 +152,80 @@
         sendToBackend('chat', { message: text, mode: modeSelect.value });
     }
 
+    function inlineStylesForCopy(clone) {
+        clone.querySelectorAll('pre').forEach(function (el) {
+            el.style.cssText = 'background:#1e1e2e;color:#cdd6f4;padding:10px;border-radius:6px;overflow-x:auto;margin:6px 0;font-family:"Cascadia Code","Consolas",monospace;font-size:12px;';
+        });
+        clone.querySelectorAll('pre code').forEach(function (el) {
+            el.style.cssText = 'background:none;padding:0;color:inherit;font-family:inherit;font-size:inherit;';
+        });
+        clone.querySelectorAll('code').forEach(function (el) {
+            if (el.parentElement && el.parentElement.tagName === 'PRE') return;
+            el.style.cssText = 'background:#f0f0f0;padding:1px 4px;border-radius:3px;font-family:"Cascadia Code","Consolas",monospace;font-size:12px;';
+        });
+        clone.querySelectorAll('h1,h2,h3').forEach(function (el) {
+            el.style.cssText = 'margin:8px 0 4px;font-weight:bold;';
+        });
+        clone.querySelectorAll('table').forEach(function (el) {
+            el.style.cssText = 'border-collapse:collapse;margin:6px 0;font-size:12px;width:100%;';
+        });
+        clone.querySelectorAll('th,td').forEach(function (el) {
+            el.style.cssText = 'border:1px solid #ddd;padding:4px 8px;text-align:left;';
+        });
+        clone.querySelectorAll('th').forEach(function (el) {
+            el.style.fontWeight = '600';
+            el.style.background = '#f5f5f5';
+        });
+        clone.querySelectorAll('blockquote').forEach(function (el) {
+            el.style.cssText = 'border-left:3px solid #7c3aed;padding-left:10px;margin:6px 0;color:#555;';
+        });
+        clone.querySelectorAll('strong').forEach(function (el) {
+            el.style.fontWeight = 'bold';
+        });
+        clone.querySelectorAll('em').forEach(function (el) {
+            el.style.fontStyle = 'italic';
+        });
+        clone.querySelectorAll('ul,ol').forEach(function (el) {
+            el.style.cssText = 'margin:4px 0;padding-left:20px;';
+        });
+        clone.querySelectorAll('a').forEach(function (el) {
+            el.style.cssText = 'color:#7c3aed;text-decoration:underline;';
+        });
+    }
+
+    function addCopyButton(div, markdown) {
+        div.dataset.md = markdown;
+        var btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.title = 'Copy (rich text + markdown)';
+        btn.innerHTML = '&#x2398;';
+        btn.addEventListener('click', function () {
+            var md = div.dataset.md;
+            var clone = div.cloneNode(true);
+            var cloneBtn = clone.querySelector('.copy-btn');
+            if (cloneBtn) cloneBtn.remove();
+            inlineStylesForCopy(clone);
+
+            var styledHtml = '<div style="font-family:system-ui,-apple-system,sans-serif;font-size:13px;line-height:1.5;color:#1a1a2e;">' + clone.innerHTML + '</div>';
+            var htmlBlob = new Blob([styledHtml], { type: 'text/html' });
+            var textBlob = new Blob([md], { type: 'text/plain' });
+
+            navigator.clipboard.write([
+                new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+            ]).then(function () {
+                btn.textContent = '\u2713';
+                setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
+            });
+        });
+        div.appendChild(btn);
+    }
+
     function appendMessage(role, content) {
         var div = document.createElement('div');
         div.className = 'message ' + role;
         if (role === 'assistant') {
             div.innerHTML = renderMarkdown(content);
+            addCopyButton(div, content);
         } else {
             div.textContent = content;
         }
@@ -232,6 +301,7 @@
         if (streamElement) {
             streamElement.classList.remove('streaming');
             streamElement.innerHTML = renderMarkdown(streamBuffer);
+            if (streamBuffer) addCopyButton(streamElement, streamBuffer);
         }
         if (streamBuffer) {
             chatHistory.push({ type: 'assistant', content: streamBuffer });
