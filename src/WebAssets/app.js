@@ -560,6 +560,7 @@
         if (data.retryMaxAttempts != null) document.getElementById('retryMaxAttemptsInput').value = data.retryMaxAttempts;
         if (data.retryDelaySeconds != null) document.getElementById('retryDelaySecondsInput').value = data.retryDelaySeconds;
         if (data.maxToolRounds != null) document.getElementById('maxToolRoundsInput').value = data.maxToolRounds;
+        if (data.promptCachingEnabled != null) document.getElementById('promptCachingCheckbox').checked = data.promptCachingEnabled;
         if (data.hasKey) document.getElementById('apiKeyInput').placeholder = '********** (key saved)';
         if (data.theme) applyTheme(data.theme);
     }
@@ -578,6 +579,7 @@
         var retryMaxAttempts = parseInt(document.getElementById('retryMaxAttemptsInput').value) || 20;
         var retryDelaySeconds = parseInt(document.getElementById('retryDelaySecondsInput').value) || 60;
         var maxToolRounds = parseInt(document.getElementById('maxToolRoundsInput').value) || 10;
+        var promptCachingEnabled = document.getElementById('promptCachingCheckbox').checked;
 
         sendToBackend('save_settings', {
             apiKey: apiKey,
@@ -587,6 +589,7 @@
             retryMaxAttempts: retryMaxAttempts,
             retryDelaySeconds: retryDelaySeconds,
             maxToolRounds: maxToolRounds,
+            promptCachingEnabled: promptCachingEnabled,
             theme: theme
         });
 

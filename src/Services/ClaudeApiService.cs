@@ -107,15 +107,18 @@ public class ClaudeApiService
         SystemPromptParts systemPrompt, List<object> messages,
         List<Dictionary<string, object>>? tools, AideLiteConfig config)
     {
-        // System prompt is sent as an array of content blocks, each with cache_control.
-        // Anthropic caches matching prefixes for 5 minutes — subsequent calls in the
-        // same conversation (especially tool-use rounds) get cache hits, which do NOT
-        // count toward the input token rate limit.
-        var systemBlocks = new List<object>
-        {
-            new { type = "text", text = systemPrompt.StaticInstructions, cache_control = CacheBreakpoint },
-            new { type = "text", text = systemPrompt.AppContext, cache_control = CacheBreakpoint }
-        };
+        var caching = config.PromptCachingEnabled;
+        var systemBlocks = caching
+            ? new List<object>
+            {
+                new { type = "text", text = systemPrompt.StaticInstructions, cache_control = CacheBreakpoint },
+                new { type = "text", text = systemPrompt.AppContext, cache_control = CacheBreakpoint }
+            }
+            : new List<object>
+            {
+                new { type = "text", text = systemPrompt.StaticInstructions },
+                new { type = "text", text = systemPrompt.AppContext }
+            };
 
         var body = new Dictionary<string, object>
         {
@@ -155,7 +158,7 @@ public class ClaudeApiService
             using var httpClient = _httpClientService.CreateHttpClient();
             httpClient.Timeout = TimeSpan.FromMinutes(5);
 
-            using var request = CreateHttpRequest(apiKey, requestJson);
+            using var request = CreateHttpRequest(apiKey, requestJson, config.PromptCachingEnabled);
             using var response = await httpClient.SendAsync(request, ct);
             var statusCode = (int)response.StatusCode;
             _logService.Info($"AIDE Lite: [API] HTTP {statusCode} {response.StatusCode}");
@@ -185,12 +188,13 @@ public class ClaudeApiService
         return ApiResponse.Error("Rate limit exceeded after maximum retries.", "rate_limit");
     }
 
-    private static HttpRequestMessage CreateHttpRequest(string apiKey, string json)
+    private static HttpRequestMessage CreateHttpRequest(string apiKey, string json, bool cachingEnabled)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
         request.Headers.Add("x-api-key", apiKey);
         request.Headers.Add("anthropic-version", ApiVersion);
-        request.Headers.Add("anthropic-beta", "prompt-caching-2024-07-31");
+        if (cachingEnabled)
+            request.Headers.Add("anthropic-beta", "prompt-caching-2024-07-31");
         request.Content = new StringContent(json, Encoding.UTF8, "application/json");
         return request;
     }

@@ -35,4 +35,7 @@ public class AideLiteConfig
 
     [JsonPropertyName("maxToolRounds")]
     public int MaxToolRounds { get; set; } = 10;
+
+    [JsonPropertyName("promptCachingEnabled")]
+    public bool PromptCachingEnabled { get; set; } = true;
 }

@@ -266,12 +266,14 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             var systemPrompt = _promptBuilder!.BuildSystemPromptParts(_cachedContext, _userRules);
             var messages = _conversation.BuildApiMessages();
 
-            var tools = _toolRegistry?.BuildToolDefinitions(withCacheControl: true);
-            DiagLog($"[4/6] Sending to Claude API (messages: {messages.Count}, tools: {tools?.Count ?? 0}, context: {(_cachedContext != null ? "loaded" : "none")})");
+            var config = _configService.GetConfig();
+            var cachingEnabled = config.PromptCachingEnabled;
+            var tools = _toolRegistry?.BuildToolDefinitions(withCacheControl: cachingEnabled);
+            DiagLog($"[4/6] Sending to Claude API (messages: {messages.Count}, tools: {tools?.Count ?? 0}, context: {(_cachedContext != null ? "loaded" : "none")}, caching: {cachingEnabled})");
 
             // Tool use loop — Claude may request multiple rounds of tool calls before producing a final answer.
             // Each round: send conversation -> receive response -> execute tool calls -> append results -> repeat.
-            var maxToolRounds = _configService.GetConfig().MaxToolRounds;
+            var maxToolRounds = config.MaxToolRounds;
             var totalInputTokens = 0;
             var totalOutputTokens = 0;
             var totalCacheCreation = 0;
@@ -417,7 +419,8 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             theme = config.Theme,
             retryMaxAttempts = config.RetryMaxAttempts,
             retryDelaySeconds = config.RetryDelaySeconds,
-            maxToolRounds = config.MaxToolRounds
+            maxToolRounds = config.MaxToolRounds,
+            promptCachingEnabled = config.PromptCachingEnabled
         });
     }
 
@@ -439,8 +442,11 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         int? maxToolRounds = null;
         if (data?["maxToolRounds"] != null)
             maxToolRounds = data["maxToolRounds"]!.GetValue<int>();
+        bool? promptCachingEnabled = null;
+        if (data?["promptCachingEnabled"] != null)
+            promptCachingEnabled = data["promptCachingEnabled"]!.GetValue<bool>();
 
-        _configService.SaveConfig(apiKey, model, depth, tokens, theme, retryMaxAttempts, retryDelaySeconds, maxToolRounds);
+        _configService.SaveConfig(apiKey, model, depth, tokens, theme, retryMaxAttempts, retryDelaySeconds, maxToolRounds, promptCachingEnabled);
         SendToWebView("settings_saved", new { success = true });
     }
 
