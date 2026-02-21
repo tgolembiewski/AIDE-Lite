@@ -363,7 +363,23 @@ body {
     background: var(--bg-input-area);
     border-top: 1px solid var(--border-primary);
     flex-shrink: 0;
+    align-items: flex-end;
 }
+.mode-select {
+    padding: 6px 4px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-input);
+    color: var(--text-input);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    align-self: flex-end;
+    min-width: 68px;
+}
+.mode-select:focus { border-color: #7c3aed; }
 #chatInput {
     flex: 1;
     border: 1px solid var(--border-input);

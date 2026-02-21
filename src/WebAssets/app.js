@@ -25,6 +25,7 @@
     // --- DOM References ---
     var chatArea = document.getElementById('chatArea');
     var chatInput = document.getElementById('chatInput');
+    var modeSelect = document.getElementById('modeSelect');
     var sendBtn = document.getElementById('sendBtn');
     var refreshBtn = document.getElementById('refreshBtn');
     var newChatBtn = document.getElementById('newChatBtn');
@@ -145,7 +146,7 @@
         stopBtn.classList.remove('hidden');
         showProcessingBar('Thinking...');
 
-        sendToBackend('chat', { message: text });
+        sendToBackend('chat', { message: text, mode: modeSelect.value });
     }
 
     function appendMessage(role, content) {
@@ -806,6 +807,12 @@
     }
 
     // --- Event Listeners & UI Wiring ---
+    modeSelect.addEventListener('change', function () {
+        chatInput.placeholder = modeSelect.value === 'ask'
+            ? 'Ask mode \u2014 read-only, no changes to your app...'
+            : 'Agent mode \u2014 can read and modify your app...';
+    });
+
     sendBtn.addEventListener('click', sendMessage);
 
     stopBtn.addEventListener('click', function () {

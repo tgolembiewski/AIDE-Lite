@@ -182,7 +182,14 @@ The full app model with entity attributes, types, associations, and microflow ac
     /// Build system prompt as two separate blocks so the API layer can apply
     /// prompt caching (cache_control) to each independently.
     /// </summary>
-    public SystemPromptParts BuildSystemPromptParts(AppContextDto? appContext, string? userRules = null)
+    private const string AskModePrefix =
+        @"IMPORTANT — ASK MODE IS ACTIVE.
+You are in read-only Ask mode. You MUST NOT use any tools that modify the application (create_microflow, replace_microflow, rename_microflow, add_activities_to_microflow, edit_microflow_activity). No tools are available in this mode.
+You may ONLY answer questions, explain concepts, describe the app model from context, and provide guidance. Do NOT suggest running tools or promise to make changes — instead explain what the user would need to do.
+
+";
+
+    public SystemPromptParts BuildSystemPromptParts(AppContextDto? appContext, string? userRules = null, bool isAskMode = false)
     {
         var userRulesSection = "";
         if (!string.IsNullOrWhiteSpace(userRules))
@@ -199,6 +206,9 @@ The full app model with entity attributes, types, associations, and microflow ac
         var staticInstructions = InstructionsTemplate
             .Replace("{BEST_PRACTICES}", _bestPractices.Value)
             .Replace("{USER_RULES}", userRulesSection);
+
+        if (isAskMode)
+            staticInstructions = AskModePrefix + staticInstructions;
 
         var contextSection = appContext != null && appContext.Modules.Count > 0
             ? appContext.ToDetailedCompactSummary()

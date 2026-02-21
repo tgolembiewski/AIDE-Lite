@@ -261,15 +261,20 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             }
             DiagLog("[3/6] Services initialized");
 
+            var mode = data?["mode"]?.GetValue<string>() ?? "agent";
+            var isAskMode = mode == "ask";
+
             _conversation!.AddUserMessage(messageText);
 
-            var systemPrompt = _promptBuilder!.BuildSystemPromptParts(_cachedContext, _userRules);
+            var systemPrompt = _promptBuilder!.BuildSystemPromptParts(_cachedContext, _userRules, isAskMode);
             var messages = _conversation.BuildApiMessages();
 
             var config = _configService.GetConfig();
             var cachingEnabled = config.PromptCachingEnabled;
-            var tools = _toolRegistry?.BuildToolDefinitions(withCacheControl: cachingEnabled);
-            DiagLog($"[4/6] Sending to Claude API (messages: {messages.Count}, tools: {tools?.Count ?? 0}, context: {(_cachedContext != null ? "loaded" : "none")}, caching: {cachingEnabled})");
+            List<Dictionary<string, object>>? tools = isAskMode
+                ? null
+                : _toolRegistry?.BuildToolDefinitions(withCacheControl: cachingEnabled);
+            DiagLog($"[4/6] Sending to Claude API (mode: {mode}, messages: {messages.Count}, tools: {tools?.Count ?? 0}, context: {(_cachedContext != null ? "loaded" : "none")}, caching: {cachingEnabled})");
 
             // Tool use loop — Claude may request multiple rounds of tool calls before producing a final answer.
             // Each round: send conversation -> receive response -> execute tool calls -> append results -> repeat.

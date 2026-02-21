@@ -30,7 +30,7 @@ If the build fails, fix the errors and rebuild. Do NOT proceed to copy on a fail
 ## Step 3 — Copy to Studio Pro Extensions
 
 ```powershell
-$dest = "c:\Users\tomekgolembiewski\AppData\Local\Programs\Mendix\10.24.15.93102\modeler\Extensions\AideLite"
+$dest = "C:\Users\tomekgolembiewski\AppData\Local\Programs\Mendix\10.24.13.86719\modeler\Extensions\AideLite"
 if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
 New-Item -ItemType Directory -Path $dest -Force | Out-Null
 Copy-Item -Path "src\bin\Release\net8.0-windows\*" -Destination $dest -Recurse -Force
@@ -39,7 +39,7 @@ Copy-Item -Path "src\bin\Release\net8.0-windows\*" -Destination $dest -Recurse -
 ## Step 4 — Launch Studio Pro with project
 
 ```powershell
-Start-Process "C:\Users\tomekgolembiewski\AppData\Local\Programs\Mendix\10.24.15.93102\modeler\studiopro.exe" -ArgumentList "`"C:\MendixProjects\LEA-OpusPlugin\Zeiterfassung 2024.mpr`""
+Start-Process "C:\Users\tomekgolembiewski\AppData\Local\Programs\Mendix\10.24.13.86719\modeler\studiopro.exe" -ArgumentList "`"C:\MendixProjects\LEA-development-current\Zeiterfassung 2024.mpr`""
 ```
 
 This opens Studio Pro directly into the project without the startup dialog.

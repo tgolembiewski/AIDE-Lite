@@ -72,7 +72,11 @@
 
         <!-- Input Area -->
         <div class="input-area">
-            <textarea id="chatInput" placeholder="Ask about your app, or request a microflow..." rows="2"></textarea>
+            <select id="modeSelect" class="mode-select" title="Interaction mode">
+                <option value="agent">Agent</option>
+                <option value="ask">Ask</option>
+            </select>
+            <textarea id="chatInput" placeholder="Agent mode — can read and modify your app..." rows="2"></textarea>
             <button id="sendBtn" class="send-btn" title="Send">&#x27A4;</button>
             <button id="stopBtn" class="stop-btn hidden" title="Stop generating">&#x25A0;</button>
         </div>
