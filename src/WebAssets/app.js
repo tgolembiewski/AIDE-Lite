@@ -864,7 +864,7 @@
         }
 
         lines.push('---');
-        lines.push('*Exported from AIDE Lite v1.1.1*');
+        lines.push('*Exported from AIDE Lite v1.2.0*');
 
         var markdown = lines.join('\n');
         var blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
