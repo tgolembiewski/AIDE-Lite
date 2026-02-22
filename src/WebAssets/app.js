@@ -33,6 +33,7 @@
     let autoLoadPending = false;
     let initialSettingsLoaded = false;
     let skipAutoLoadConversation = false;
+    let activeDocument = null;
 
     // --- DOM References ---
     const chatArea = document.getElementById('chatArea');
@@ -74,6 +75,10 @@
     const imagePreview = document.getElementById('imagePreview');
     const attachImageBtn = document.getElementById('attachImageBtn');
     const imageFileInput = document.getElementById('imageFileInput');
+    const activeDocBar = document.getElementById('activeDocBar');
+    const activeDocIcon = document.getElementById('activeDocIcon');
+    const activeDocText = document.getElementById('activeDocText');
+    const activeDocAddBtn = document.getElementById('activeDocAddBtn');
 
     // --- WebView Bridge (C# <-> JS messaging) ---
     function sendToBackend(type, payload) {
@@ -142,6 +147,9 @@
                 skipAutoLoadConversation = true;
                 autoLoadPending = false;
                 break;
+            case 'active_document_changed':
+                handleActiveDocumentChanged(data);
+                break;
             case 'auto_explain':
                 handleAutoExplain(data);
                 break;
@@ -185,6 +193,12 @@
             payload.documents = docs.map(function (d) {
                 return { type: d.type, qualifiedName: d.qualifiedName };
             });
+        }
+        if (activeDocument) {
+            payload.activeDocument = {
+                type: activeDocument.type,
+                qualifiedName: activeDocument.qualifiedName
+            };
         }
         sendToBackend('chat', payload);
     }
@@ -1048,6 +1062,40 @@
         });
     }
 
+    // --- Active Document Tracking ---
+    function handleActiveDocumentChanged(data) {
+        if (!data || !data.name) {
+            activeDocument = null;
+            updateActiveDocBar();
+            return;
+        }
+        activeDocument = {
+            name: data.name,
+            type: data.type || 'document',
+            qualifiedName: data.qualifiedName || data.name
+        };
+        updateActiveDocBar();
+    }
+
+    function updateActiveDocBar() {
+        if (!activeDocBar) return;
+        if (!activeDocument) {
+            activeDocBar.classList.add('hidden');
+            return;
+        }
+        activeDocBar.classList.remove('hidden');
+        activeDocBar.className = 'active-doc-bar active-doc-' + activeDocument.type;
+
+        var iconMap = {
+            'microflow': '\u2699',
+            'page': '\uD83D\uDCC4',
+            'entity': '\uD83D\uDCE6',
+            'document': '\uD83D\uDCC1'
+        };
+        activeDocIcon.textContent = iconMap[activeDocument.type] || iconMap['document'];
+        activeDocText.textContent = activeDocument.qualifiedName;
+    }
+
     // --- Document Reference Handling ---
     function handleAutoExplain(data) {
         if (!data || !data.qualifiedName) return;
@@ -1245,6 +1293,18 @@
     if (exportDownloadBtn) exportDownloadBtn.addEventListener('click', exportChat);
     if (exportCancelBtn) exportCancelBtn.addEventListener('click', closeExport);
     if (exportOverlay) exportOverlay.addEventListener('click', closeExport);
+
+    if (activeDocAddBtn) {
+        activeDocAddBtn.addEventListener('click', function () {
+            if (!activeDocument) return;
+            var already = pendingDocuments.some(function (d) { return d.qualifiedName === activeDocument.qualifiedName; });
+            if (!already) {
+                pendingDocuments.push({ type: activeDocument.type, qualifiedName: activeDocument.qualifiedName });
+                renderDocumentPreviews();
+            }
+            chatInput.focus();
+        });
+    }
 
     document.querySelector('#settingsModal .modal-overlay')?.addEventListener('click', closeSettings);
 

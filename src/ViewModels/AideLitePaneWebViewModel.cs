@@ -36,6 +36,11 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
     private bool _webViewReady;
     private readonly List<DocumentReference> _pendingReferences = new();
 
+    // Active document tracking — updated by AideLitePaneExtension via ActiveDocumentChanged event
+    private string? _activeDocumentName;
+    private string? _activeDocumentType;
+    private string? _activeDocumentQualifiedName;
+
     // Lazy model accessor — always gets the current app even after project switch (via lambda, not snapshot)
     private IModel? Model => _getModel();
     // Tracks which model we last initialized services for, to detect project switches
@@ -142,6 +147,24 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             type = reference.ElementType,
             qualifiedName = reference.QualifiedName
         });
+    }
+
+    internal void UpdateActiveDocument(string? name, string? type, string? qualifiedName)
+    {
+        _activeDocumentName = name;
+        _activeDocumentType = type;
+        _activeDocumentQualifiedName = qualifiedName;
+
+        if (!_webViewReady) return;
+
+        if (name == null)
+        {
+            SendToWebView("active_document_changed", new { name = (string?)null, type = (string?)null, qualifiedName = (string?)null });
+        }
+        else
+        {
+            SendToWebView("active_document_changed", new { name, type, qualifiedName });
+        }
     }
 
     /// <summary>
@@ -320,6 +343,7 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             var isAskMode = mode == "ask";
 
             messageText = PrependDocumentReferences(data, messageText);
+            messageText = PrependActiveDocumentContext(data, messageText);
 
             var imageAttachments = ParseImageAttachments(data);
             if (imageAttachments.Count > 0)
@@ -670,6 +694,29 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             : messageText;
     }
 
+    private string PrependActiveDocumentContext(JsonObject? data, string messageText)
+    {
+        // Skip if explicit document references were already added
+        var docsNode = data?["documents"];
+        if (docsNode is JsonArray { Count: > 0 })
+            return messageText;
+
+        if (string.IsNullOrEmpty(_activeDocumentQualifiedName))
+            return messageText;
+
+        var type = _activeDocumentType ?? "document";
+        var toolHint = type switch
+        {
+            "microflow" => "use get_microflow_details to inspect it",
+            "page" => "use get_pages to list page details",
+            "entity" => "use get_entity_details to inspect it",
+            _ => "use search_model to find more information"
+        };
+
+        var contextLine = $"[The user is currently viewing: @{_activeDocumentQualifiedName} ({type}) — {toolHint}]";
+        return contextLine + "\n\n" + messageText;
+    }
+
     private static readonly HashSet<string> AllowedImageMediaTypes = new(StringComparer.Ordinal)
     {
         "image/jpeg", "image/png", "image/gif", "image/webp"
@@ -755,6 +802,9 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         _cachedContext = null;
         _webViewReady = false;
         _pendingReferences.Clear();
+        _activeDocumentName = null;
+        _activeDocumentType = null;
+        _activeDocumentQualifiedName = null;
         DocumentReferenceStore.OnDocumentReferenced -= OnDocumentReferenced;
         if (_webView != null)
         {

@@ -188,6 +188,53 @@ body {
 .status-dot.stale { background: #fd7e14; animation: pulse 1.5s infinite; }
 @keyframes pulse { 50% { opacity: 0.4; } }
 
+/* === Active Document Indicator === */
+.active-doc-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px;
+    background: var(--bg-surface);
+    font-size: 11px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    border-left: 3px solid #9ca3af;
+    transition: border-color 0.3s, background 0.3s;
+}
+.active-doc-bar.active-doc-microflow { border-left-color: #2563eb; }
+.active-doc-bar.active-doc-page { border-left-color: #059669; }
+.active-doc-bar.active-doc-entity { border-left-color: #7c3aed; }
+.active-doc-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+    line-height: 1;
+}
+.active-doc-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 11px;
+}
+.active-doc-add-btn {
+    background: none;
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 1px 6px;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.active-doc-add-btn:hover {
+    border-color: #7c3aed;
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.06);
+}
+
 /* === Context Usage Bar === */
 .context-usage {
     display: flex;
