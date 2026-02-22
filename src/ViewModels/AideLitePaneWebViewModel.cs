@@ -53,6 +53,7 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
     private string? _currentConversationId;
     private string? _currentConversationTitle;
     private DateTime _currentConversationCreatedAt;
+    private DateTime _lastSettingsSave = DateTime.MinValue;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -102,6 +103,8 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
     /// <summary>
     /// Write diagnostic log to file AND send to WebView for visibility.
     /// </summary>
+    private const long MaxLogFileSize = 5 * 1024 * 1024; // 5 MB
+
     private void DiagLog(string message)
     {
         var logLine = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
@@ -111,7 +114,22 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "AideLite");
             Directory.CreateDirectory(logDir);
-            File.AppendAllText(Path.Combine(logDir, "debug.log"), logLine + Environment.NewLine);
+            var logPath = Path.Combine(logDir, "debug.log");
+
+            // Log rotation: if file exceeds 5 MB, rotate to .log.old (keep 1 backup)
+            if (File.Exists(logPath))
+            {
+                var info = new FileInfo(logPath);
+                if (info.Length > MaxLogFileSize)
+                {
+                    var oldPath = logPath + ".old";
+                    File.Copy(logPath, oldPath, overwrite: true);
+                    File.WriteAllText(logPath, logLine + Environment.NewLine);
+                    return;
+                }
+            }
+
+            File.AppendAllText(logPath, logLine + Environment.NewLine);
         }
         catch { /* ignore file errors */ }
 
@@ -209,6 +227,9 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                 case "save_chat_state":
                     HandleSaveChatState(data);
                     break;
+                case "consent_accepted":
+                    HandleConsentAccepted();
+                    break;
                 case "MessageListenerRegistered":
                     DiagLog("OnMessageReceived: JS message listener registered - bridge ready");
                     break;
@@ -250,9 +271,19 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                 return;
             }
 
-            DiagLog($"[2/6] Message: \"{messageText.Substring(0, Math.Min(messageText.Length, 50))}\"");
+            DiagLog($"[2/6] Message received (length={messageText.Length})");
 
             EnsureServicesInitialized();
+
+            // GDPR consent gate: require user acceptance before any data leaves the machine
+            var consentConfig = _configService.GetConfig();
+            if (!consentConfig.HasAcceptedDataConsent)
+            {
+                DiagLog("[2/6] Data consent not yet accepted — prompting user");
+                _conversation!.AddUserMessage(messageText);
+                SendToWebView("consent_required", new { pendingMessage = true });
+                return;
+            }
 
             if (_currentConversationId == null)
             {
@@ -264,7 +295,9 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             }
             DiagLog("[3/6] Services initialized");
 
-            var mode = data?["mode"]?.GetValue<string>() ?? "agent";
+            var rawMode = data?["mode"]?.GetValue<string>();
+            // Validate mode server-side — default to "ask" (least permissive) for unknown values
+            var mode = rawMode is "agent" or "ask" ? rawMode : "ask";
             var isAskMode = mode == "ask";
 
             var imageAttachments = ParseImageAttachments(data);
@@ -344,7 +377,7 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                 var toolResults = new List<(string ToolUseId, string Content, bool IsError)>();
                 foreach (var toolCall in response.ToolCalls)
                 {
-                    var toolResult = _toolExecutor!.Execute(toolCall.Name, toolCall.InputJson);
+                    var toolResult = _toolExecutor!.Execute(toolCall.Name, toolCall.InputJson, isAskMode);
                     SendToWebView("tool_result", new
                     {
                         toolName = toolCall.Name,
@@ -400,6 +433,13 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         }
     }
 
+    private void HandleConsentAccepted()
+    {
+        _configService.SaveConsent(true);
+        DiagLog("Data consent accepted by user");
+        SendToWebView("consent_saved", new { accepted = true });
+    }
+
     private void HandleGetContext()
     {
         if (Model == null)
@@ -449,6 +489,14 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
 
     private void HandleSaveSettings(JsonObject? data)
     {
+        // Rate-limit settings saves to prevent file contention from rapid clicks
+        if ((DateTime.UtcNow - _lastSettingsSave).TotalSeconds < 2)
+        {
+            DiagLog("HandleSaveSettings: throttled (< 2s since last save)");
+            return;
+        }
+        _lastSettingsSave = DateTime.UtcNow;
+
         var apiKey = data?["apiKey"]?.GetValue<string>();
         var model = data?["selectedModel"]?.GetValue<string>();
         var depth = data?["contextDepth"]?.GetValue<string>();
@@ -486,6 +534,7 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         _conversation?.Clear();
         _currentConversationId = null;
         _currentConversationTitle = null;
+        _currentConversationCreatedAt = default;
         _logService.Info("AIDE Lite: Chat cleared");
     }
 
@@ -506,6 +555,13 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
     {
         var id = data?["id"]?.GetValue<string>();
         if (string.IsNullOrEmpty(id)) return;
+
+        // Cancel any in-flight request before switching conversations
+        if (_isChatProcessing)
+        {
+            _claudeApi?.Cancel();
+            _isChatProcessing = false;
+        }
 
         EnsureServicesInitialized();
         var conversation = _historyService!.LoadConversation(id);
@@ -569,15 +625,15 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                 }
             }
 
-            var isNew = !File.Exists(Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AideLite", "history", $"{_currentConversationId}.json"));
+            var existing = _historyService.LoadConversation(_currentConversationId);
 
             _historyService.SaveConversation(new SavedConversation
             {
                 Id = _currentConversationId,
                 Title = _currentConversationTitle ?? "Untitled",
-                CreatedAt = _currentConversationCreatedAt,
+                CreatedAt = _currentConversationCreatedAt != default
+                    ? _currentConversationCreatedAt
+                    : (existing?.CreatedAt ?? DateTime.UtcNow),
                 DisplayHistory = displayHistory,
                 ApiMessagesJson = _conversation.SerializeMessages()
             });
@@ -599,8 +655,18 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         var imagesNode = data?["images"];
         if (imagesNode is not JsonArray imagesArray) return result;
 
+        const int maxImages = 5;
+        const long maxTotalBase64Bytes = 20 * 1024 * 1024; // 20 MB total
+        long totalBase64Bytes = 0;
+
         foreach (var item in imagesArray)
         {
+            if (result.Count >= maxImages)
+            {
+                DiagLog($"ParseImageAttachments: max image count ({maxImages}) reached, skipping remaining");
+                break;
+            }
+
             var base64 = item?["base64"]?.GetValue<string>();
             var mediaType = item?["mediaType"]?.GetValue<string>();
             if (string.IsNullOrEmpty(base64) || string.IsNullOrEmpty(mediaType)) continue;
@@ -609,6 +675,14 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                 DiagLog($"ParseImageAttachments: skipping unsupported media type '{mediaType}'");
                 continue;
             }
+
+            totalBase64Bytes += base64.Length;
+            if (totalBase64Bytes > maxTotalBase64Bytes)
+            {
+                DiagLog($"ParseImageAttachments: total base64 size exceeds {maxTotalBase64Bytes / (1024 * 1024)}MB cap, skipping remaining");
+                break;
+            }
+
             result.Add(new ImageAttachment(base64, mediaType));
         }
         return result;
@@ -640,6 +714,8 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
     /// <summary>
     /// Load user rules from .aide-lite-rules.md in the Mendix project root.
     /// </summary>
+    private const long MaxRulesFileSize = 64 * 1024; // 64 KB
+
     private void LoadUserRules()
     {
         try
@@ -647,21 +723,41 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             // Navigate from extension DLL location up to the Mendix project root (3 levels up)
             var assemblyDir = Path.GetDirectoryName(GetType().Assembly.Location)!;
             var appRoot = Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", ".."));
+
+            // Validate this looks like a Mendix project root (must contain a .mpr file)
+            if (!Directory.GetFiles(appRoot, "*.mpr").Any())
+            {
+                DiagLog("LoadUserRules: No .mpr file found in resolved project root — skipping rules");
+                _userRules = null;
+                return;
+            }
+
             var rulesPath = Path.Combine(appRoot, ".aide-lite-rules.md");
-            _userRules = File.Exists(rulesPath) ? File.ReadAllText(rulesPath) : null;
+            if (!File.Exists(rulesPath))
+            {
+                _userRules = null;
+                return;
+            }
+
+            var fileInfo = new FileInfo(rulesPath);
+            if (fileInfo.Length > MaxRulesFileSize)
+            {
+                DiagLog($"LoadUserRules: Rules file exceeds {MaxRulesFileSize / 1024}KB limit ({fileInfo.Length} bytes) — skipping");
+                _userRules = null;
+                return;
+            }
+
+            _userRules = File.ReadAllText(rulesPath);
         }
-        catch
+        catch (Exception ex)
         {
+            DiagLog($"LoadUserRules: Failed to load rules: {ex.Message}");
             _userRules = null;
         }
     }
 
-    private static int GetContextLimit(string model) => model switch
-    {
-        "claude-opus-4-6" => 200_000,
-        "claude-haiku-4-5-20251001" => 200_000,
-        _ => 200_000
-    };
+    // All currently-supported Claude models have 200K context windows
+    private static int GetContextLimit(string model) => 200_000;
 
     /// <summary>
     /// Clean up resources when the pane is closed.
@@ -669,8 +765,11 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
     internal void Cleanup()
     {
         _claudeApi?.Cancel();
+        _isChatProcessing = false;
         _conversation?.Clear();
         _cachedContext = null;
+        _currentConversationId = null;
+        _currentConversationTitle = null;
         if (_webView != null)
         {
             _webView.MessageReceived -= OnMessageReceived;
