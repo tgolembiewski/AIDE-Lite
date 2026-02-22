@@ -19,7 +19,7 @@ public class AideLiteConfig
     public string SelectedModel { get; set; } = "claude-sonnet-4-5-20250929";
 
     [JsonPropertyName("contextDepth")]
-    public string ContextDepth { get; set; } = "full";
+    public string ContextDepth { get; set; } = "summary";
 
     [JsonPropertyName("maxTokens")]
     public int MaxTokens { get; set; } = 8192;
@@ -44,4 +44,7 @@ public class AideLiteConfig
 
     [JsonPropertyName("autoLoadLastConversation")]
     public bool AutoLoadLastConversation { get; set; } = true;
+
+    [JsonPropertyName("hasAcceptedDataConsent")]
+    public bool HasAcceptedDataConsent { get; set; } = false;
 }
