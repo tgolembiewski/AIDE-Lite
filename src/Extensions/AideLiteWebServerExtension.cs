@@ -17,12 +17,24 @@ public class AideLiteWebServerExtension : WebServerExtension
 {
     public override void InitializeWebServer(IWebServer webServer)
     {
-        // Each route maps a URL path to a file in the deployed WebAssets folder
-        webServer.AddRoute("aide-lite/chat", ServeFile("WebAssets/chat.html", "text/html; charset=utf-8"));
-        webServer.AddRoute("aide-lite/settings", ServeFile("WebAssets/settings.html", "text/html; charset=utf-8"));
-        webServer.AddRoute("aide-lite/styles.css", ServeFile("WebAssets/styles.css", "text/css; charset=utf-8"));
-        webServer.AddRoute("aide-lite/app.js", ServeFile("WebAssets/app.js", "application/javascript; charset=utf-8"));
-        webServer.AddRoute("aide-lite/settings.js", ServeFile("WebAssets/settings.js", "application/javascript; charset=utf-8"));
+        // Pages
+        webServer.AddRoute("aide-lite/chat", ServeFile("WebAssets/pages/chat.html", "text/html; charset=utf-8"));
+        webServer.AddRoute("aide-lite/settings", ServeFile("WebAssets/pages/settings.html", "text/html; charset=utf-8"));
+        // Styles
+        webServer.AddRoute("aide-lite/styles/main.css", ServeFile("WebAssets/styles/main.css", "text/css; charset=utf-8"));
+        // Core modules (state, bridge, rendering, UI helpers, attachments)
+        webServer.AddRoute("aide-lite/core/state.js", ServeFile("WebAssets/core/state.js", "application/javascript; charset=utf-8"));
+        webServer.AddRoute("aide-lite/core/bridge.js", ServeFile("WebAssets/core/bridge.js", "application/javascript; charset=utf-8"));
+        webServer.AddRoute("aide-lite/core/markdown.js", ServeFile("WebAssets/core/markdown.js", "application/javascript; charset=utf-8"));
+        webServer.AddRoute("aide-lite/core/ui.js", ServeFile("WebAssets/core/ui.js", "application/javascript; charset=utf-8"));
+        webServer.AddRoute("aide-lite/core/attachments.js", ServeFile("WebAssets/core/attachments.js", "application/javascript; charset=utf-8"));
+        // View modules (chat, history/export, settings/theme)
+        webServer.AddRoute("aide-lite/views/chat.js", ServeFile("WebAssets/views/chat.js", "application/javascript; charset=utf-8"));
+        webServer.AddRoute("aide-lite/views/history.js", ServeFile("WebAssets/views/history.js", "application/javascript; charset=utf-8"));
+        webServer.AddRoute("aide-lite/views/settings.js", ServeFile("WebAssets/views/settings.js", "application/javascript; charset=utf-8"));
+        // Entry-point scripts
+        webServer.AddRoute("aide-lite/chat-page.js", ServeFile("WebAssets/chat-page.js", "application/javascript; charset=utf-8"));
+        webServer.AddRoute("aide-lite/settings-page.js", ServeFile("WebAssets/settings-page.js", "application/javascript; charset=utf-8"));
     }
 
     /// <summary>
@@ -40,7 +52,7 @@ public class AideLiteWebServerExtension : WebServerExtension
             {
                 response.StatusCode = 404;
                 response.ContentType = "text/plain";
-                var notFound = Encoding.UTF8.GetBytes($"File not found: {relativePath}");
+                var notFound = Encoding.UTF8.GetBytes("Not found");
                 response.ContentLength64 = notFound.Length;
                 await response.OutputStream.WriteAsync(notFound, cancellationToken);
                 return;
@@ -53,6 +65,8 @@ public class AideLiteWebServerExtension : WebServerExtension
             // Disable caching so code changes take effect immediately during development
             response.Headers.Add("Cache-Control", "no-store, no-cache, must-revalidate");
             response.Headers.Add("Pragma", "no-cache");
+            // Security headers
+            response.Headers.Add("X-Content-Type-Options", "nosniff");
             await response.OutputStream.WriteAsync(content, cancellationToken);
         };
     }
