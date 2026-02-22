@@ -796,3 +796,96 @@ body.dark .input-area.drag-over {
 .toast-notification.fade-out {
     opacity: 0;
 }
+
+/* === Document Reference Chips === */
+.doc-preview {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px 0;
+}
+.doc-preview.has-docs {
+    display: flex;
+}
+
+.doc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    background: rgba(124, 58, 237, 0.08);
+    border-left: 3px solid #9ca3af;
+    color: var(--text-primary);
+    line-height: 1.4;
+    max-width: 100%;
+}
+.doc-chip-entity { border-left-color: #7c3aed; }
+.doc-chip-microflow { border-left-color: #2563eb; }
+.doc-chip-page { border-left-color: #059669; }
+
+.doc-chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.doc-chip-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+.doc-chip-remove:hover {
+    opacity: 1;
+    color: var(--text-primary);
+}
+
+/* Chips in sent message bubbles */
+.doc-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+.doc-chip-sent {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    background: rgba(124, 58, 237, 0.12);
+    border-left: 2px solid #9ca3af;
+    color: var(--text-secondary, #555);
+}
+.doc-chip-sent.doc-chip-entity { border-left-color: #7c3aed; }
+.doc-chip-sent.doc-chip-microflow { border-left-color: #2563eb; }
+.doc-chip-sent.doc-chip-page { border-left-color: #059669; }
+
+/* Dark mode */
+body.dark .doc-chip {
+    background: rgba(124, 58, 237, 0.15);
+}
+body.dark .doc-chip.doc-chip-microflow {
+    background: rgba(37, 99, 235, 0.15);
+}
+body.dark .doc-chip.doc-chip-page {
+    background: rgba(5, 150, 105, 0.15);
+}
+body.dark .doc-chip-sent {
+    background: rgba(124, 58, 237, 0.2);
+    color: var(--text-secondary, #aaa);
+}
+body.dark .doc-chip-sent.doc-chip-microflow {
+    background: rgba(37, 99, 235, 0.2);
+}
+body.dark .doc-chip-sent.doc-chip-page {
+    background: rgba(5, 150, 105, 0.2);
+}
