@@ -81,10 +81,10 @@ public partial class ConversationHistoryService
     }
 
     /// <summary>
-    /// Read a conversation file with backward-compatible decryption.
-    /// Tries DPAPI decryption first; falls back to plaintext for pre-encryption files.
+    /// Read a conversation file with DPAPI decryption.
+    /// Plaintext fallback removed for security — unencrypted files are treated as corrupt.
     /// </summary>
-    private static string? ReadConversationFile(string filePath)
+    private string? ReadConversationFile(string filePath)
     {
         var bytes = File.ReadAllBytes(filePath);
         try
@@ -93,8 +93,10 @@ public partial class ConversationHistoryService
         }
         catch (CryptographicException)
         {
-            // Pre-encryption plaintext file — read as UTF-8
-            return Encoding.UTF8.GetString(bytes);
+            // Security: do NOT fall back to plaintext. An attacker with write access to
+            // the history directory could plant crafted plaintext JSON files for injection.
+            _logService.Warn($"AIDE Lite: Conversation file failed decryption (possibly pre-encryption or tampered): {Path.GetFileName(filePath)}");
+            return null;
         }
     }
 
@@ -162,6 +164,25 @@ public partial class ConversationHistoryService
         catch (Exception ex)
         {
             _logService.Error($"AIDE Lite: Failed to delete conversation {id}: {ex.Message}");
+        }
+    }
+
+    public void DeleteAllConversations()
+    {
+        try
+        {
+            foreach (var file in Directory.GetFiles(_historyDir, "*.json"))
+            {
+                try { File.Delete(file); }
+                catch (Exception ex)
+                {
+                    _logService.Error($"AIDE Lite: Failed to delete {Path.GetFileName(file)}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logService.Error($"AIDE Lite: Failed to delete all conversations: {ex.Message}");
         }
     }
 
