@@ -768,6 +768,9 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                 "entity" => "use get_entity_details to inspect it",
                 "microflow" => "use get_microflow_details to inspect it",
                 "page" => "use get_pages to list page details",
+                "enumeration" => "use get_enumerations to inspect it",
+                "constant" => "use search_model to find constant details",
+                "java_action" => "use search_model to find Java action details",
                 _ => "use search_model to find more information"
             };
             lines.Add($"[The user is asking about: @{qname} ({type}) — {toolHint}]");
@@ -794,6 +797,9 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             "microflow" => "use get_microflow_details to inspect it",
             "page" => "use get_pages to list page details",
             "entity" => "use get_entity_details to inspect it",
+            "enumeration" => "use get_enumerations to inspect it",
+            "constant" => "use search_model to find constant details",
+            "java_action" => "use search_model to find Java action details",
             _ => "use search_model to find more information"
         };
 

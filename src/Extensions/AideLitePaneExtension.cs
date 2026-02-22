@@ -114,6 +114,9 @@ public class AideLitePaneExtension : DockablePaneExtension
         {
             "microflow" or "microflows$microflow" => "microflow",
             "page" or "pages$page" => "page",
+            "constant" or "constants$constant" => "constant",
+            "enumeration" or "enumerations$enumeration" => "enumeration",
+            "javaaction" or "javaactions$javaaction" => "java_action",
             _ => e.DocumentType ?? "document"
         };
 

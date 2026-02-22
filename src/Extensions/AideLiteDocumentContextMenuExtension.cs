@@ -5,6 +5,9 @@
 // ============================================================================
 using System.ComponentModel.Composition;
 using AideLite.Services;
+using Mendix.StudioPro.ExtensionsAPI.Model.Constants;
+using Mendix.StudioPro.ExtensionsAPI.Model.Enumerations;
+using Mendix.StudioPro.ExtensionsAPI.Model.JavaActions;
 using Mendix.StudioPro.ExtensionsAPI.Model.Microflows;
 using Mendix.StudioPro.ExtensionsAPI.Model.Pages;
 using Mendix.StudioPro.ExtensionsAPI.Model.Projects;
@@ -59,11 +62,18 @@ public class AideLiteDocumentContextMenuExtension : ContextMenuExtension<IDocume
     {
         IMicroflow => "microflow",
         IPage => "page",
+        IConstant => "constant",
+        IEnumeration => "enumeration",
+        IJavaAction => "java_action",
         _ => "document"
     };
 
     private string ResolveQualifiedName(IDocument document)
     {
+        if (document is IConstant c) return c.QualifiedName?.ToString() ?? document.Name;
+        if (document is IEnumeration e) return e.QualifiedName?.ToString() ?? document.Name;
+        if (document is IJavaAction j) return j.QualifiedName?.ToString() ?? document.Name;
+
         if (CurrentApp == null) return document.Name;
 
         try
