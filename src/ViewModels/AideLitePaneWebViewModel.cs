@@ -33,6 +33,8 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
     private readonly IMicroflowExpressionService _expressionService;
     private readonly IUntypedModelAccessService _untypedModelAccessService;
     private IWebView? _webView;
+    private bool _webViewReady;
+    private readonly List<DocumentReference> _pendingReferences = new();
 
     // Lazy model accessor — always gets the current app even after project switch (via lambda, not snapshot)
     private IModel? Model => _getModel();
@@ -88,15 +90,58 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
 
     public override void InitWebView(IWebView webView)
     {
-        // Unsubscribe from previous WebView to prevent duplicate handler accumulation on re-open
         if (_webView != null)
             _webView.MessageReceived -= OnMessageReceived;
 
+        DocumentReferenceStore.OnDocumentReferenced -= OnDocumentReferenced;
+
         _webView = webView;
-        // Cache-busting query param forces the WebView to load fresh JS/CSS during development
+        _webViewReady = false;
         webView.Address = new Uri(_webServerBaseUrl, $"aide-lite/chat?v={DateTime.UtcNow.Ticks}");
         webView.MessageReceived += OnMessageReceived;
-        DiagLog("InitWebView: WebView initialized, MessageReceived handler attached");
+
+        // Drain any references that were enqueued before the pane opened
+        // (context menu fires Enqueue before OpenPane triggers InitWebView)
+        DocumentReferenceStore.DrainAll(r => _pendingReferences.Add(r));
+
+        DocumentReferenceStore.OnDocumentReferenced += OnDocumentReferenced;
+        DiagLog($"InitWebView: WebView initialized, MessageReceived handler attached, drained {_pendingReferences.Count} pending ref(s)");
+    }
+
+    private void OnDocumentReferenced(DocumentReference reference)
+    {
+        if (!_webViewReady)
+        {
+            _pendingReferences.Add(reference);
+            DiagLog($"OnDocumentReferenced: queued '{reference.QualifiedName}' (WebView not ready)");
+            return;
+        }
+
+        SendDocumentReference(reference);
+    }
+
+    private void FlushPendingReferences()
+    {
+        if (_pendingReferences.Count == 0) return;
+
+        SendToWebView("skip_auto_load", new { });
+
+        foreach (var reference in _pendingReferences)
+            SendDocumentReference(reference);
+        _pendingReferences.Clear();
+    }
+
+    private void SendDocumentReference(DocumentReference reference)
+    {
+        var messageType = reference.Action == DocumentAction.Explain
+            ? "auto_explain"
+            : "document_referenced";
+
+        SendToWebView(messageType, new
+        {
+            type = reference.ElementType,
+            qualifiedName = reference.QualifiedName
+        });
     }
 
     /// <summary>
@@ -177,6 +222,13 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
 
             DiagLog($"OnMessageReceived: type='{messageType}', hasData={data != null}");
 
+            if (!_webViewReady)
+            {
+                _webViewReady = true;
+                DiagLog("OnMessageReceived: WebView bridge ready, flushing pending references");
+                FlushPendingReferences();
+            }
+
             switch (messageType)
             {
                 case "chat":
@@ -210,7 +262,7 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
                     HandleSaveChatState(data);
                     break;
                 case "MessageListenerRegistered":
-                    DiagLog("OnMessageReceived: JS message listener registered - bridge ready");
+                    DiagLog("OnMessageReceived: JS message listener registered");
                     break;
                 default:
                     DiagLog($"OnMessageReceived: UNKNOWN type '{messageType}'");
@@ -266,6 +318,8 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
 
             var mode = data?["mode"]?.GetValue<string>() ?? "agent";
             var isAskMode = mode == "ask";
+
+            messageText = PrependDocumentReferences(data, messageText);
 
             var imageAttachments = ParseImageAttachments(data);
             if (imageAttachments.Count > 0)
@@ -588,6 +642,34 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         }
     }
 
+    private static string PrependDocumentReferences(JsonObject? data, string messageText)
+    {
+        var docsNode = data?["documents"];
+        if (docsNode is not JsonArray docsArray || docsArray.Count == 0)
+            return messageText;
+
+        var lines = new List<string>();
+        foreach (var item in docsArray)
+        {
+            var type = item?["type"]?.GetValue<string>() ?? "document";
+            var qname = item?["qualifiedName"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(qname)) continue;
+
+            var toolHint = type switch
+            {
+                "entity" => "use get_entity_details to inspect it",
+                "microflow" => "use get_microflow_details to inspect it",
+                "page" => "use get_pages to list page details",
+                _ => "use search_model to find more information"
+            };
+            lines.Add($"[The user is asking about: @{qname} ({type}) — {toolHint}]");
+        }
+
+        return lines.Count > 0
+            ? string.Join("\n", lines) + "\n\n" + messageText
+            : messageText;
+    }
+
     private static readonly HashSet<string> AllowedImageMediaTypes = new(StringComparer.Ordinal)
     {
         "image/jpeg", "image/png", "image/gif", "image/webp"
@@ -671,6 +753,9 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         _claudeApi?.Cancel();
         _conversation?.Clear();
         _cachedContext = null;
+        _webViewReady = false;
+        _pendingReferences.Clear();
+        DocumentReferenceStore.OnDocumentReferenced -= OnDocumentReferenced;
         if (_webView != null)
         {
             _webView.MessageReceived -= OnMessageReceived;

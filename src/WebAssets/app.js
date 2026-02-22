@@ -27,10 +27,12 @@
     let currentTheme = 'light';
     let chatHistory = [];
     let pendingImages = [];
+    let pendingDocuments = [];
     let retryCountdownInterval = null;
     let retryAttemptCount = 0;
     let autoLoadPending = false;
     let initialSettingsLoaded = false;
+    let skipAutoLoadConversation = false;
 
     // --- DOM References ---
     const chatArea = document.getElementById('chatArea');
@@ -136,6 +138,16 @@
             case 'settings_saved':
                 handleSettingsSaved(data);
                 break;
+            case 'skip_auto_load':
+                skipAutoLoadConversation = true;
+                autoLoadPending = false;
+                break;
+            case 'auto_explain':
+                handleAutoExplain(data);
+                break;
+            case 'document_referenced':
+                handleDocumentReferenced(data);
+                break;
         }
     }
 
@@ -145,13 +157,16 @@
         if (!text || isStreaming) return;
 
         const images = pendingImages.slice();
+        const docs = pendingDocuments.slice();
         hideWelcome();
-        appendMessage('user', text, images);
-        chatHistory.push({ type: 'user', content: text, images: images });
+        appendMessage('user', text, images, docs);
+        chatHistory.push({ type: 'user', content: text, images: images, documents: docs });
         chatInput.value = '';
         chatInput.style.height = 'auto';
         pendingImages = [];
+        pendingDocuments = [];
         renderImagePreviews();
+        renderDocumentPreviews();
 
         isStreaming = true;
         retryAttemptCount = 0;
@@ -164,6 +179,11 @@
         if (images.length > 0) {
             payload.images = images.map(function (img) {
                 return { base64: img.base64, mediaType: img.mediaType };
+            });
+        }
+        if (docs.length > 0) {
+            payload.documents = docs.map(function (d) {
+                return { type: d.type, qualifiedName: d.qualifiedName };
             });
         }
         sendToBackend('chat', payload);
@@ -239,13 +259,24 @@
         div.appendChild(btn);
     }
 
-    function appendMessage(role, content, images) {
+    function appendMessage(role, content, images, documents) {
         const div = document.createElement('div');
         div.className = 'message ' + role;
         if (role === 'assistant') {
             div.innerHTML = renderMarkdown(content);
             addCopyButton(div, content);
         } else {
+            if (documents && documents.length > 0) {
+                const docContainer = document.createElement('div');
+                docContainer.className = 'doc-attachments';
+                documents.forEach(function (doc) {
+                    const chip = document.createElement('span');
+                    chip.className = 'doc-chip doc-chip-sent doc-chip-' + doc.type;
+                    chip.textContent = '@' + doc.qualifiedName;
+                    docContainer.appendChild(chip);
+                });
+                div.appendChild(docContainer);
+            }
             if (images && images.length > 0) {
                 const imgContainer = document.createElement('div');
                 imgContainer.className = 'image-attachments';
@@ -629,7 +660,7 @@
 
             switch (entry.type) {
                 case 'user':
-                    appendMessage('user', entry.content, entry.images);
+                    appendMessage('user', entry.content, entry.images, entry.documents);
                     break;
                 case 'assistant':
                     appendMessage('assistant', entry.content);
@@ -700,7 +731,7 @@
                 contextText.textContent = 'Loading context...';
                 sendToBackend('get_context');
             }
-            if (data.autoLoadLastConversation !== false) {
+            if (data.autoLoadLastConversation !== false && !skipAutoLoadConversation) {
                 autoLoadPending = true;
                 sendToBackend('get_history');
             }
@@ -1017,6 +1048,60 @@
         });
     }
 
+    // --- Document Reference Handling ---
+    function handleAutoExplain(data) {
+        if (!data || !data.qualifiedName) return;
+        pendingDocuments = [{ type: data.type || 'document', qualifiedName: data.qualifiedName }];
+        chatInput.value = 'Explain @' + data.qualifiedName;
+        hideWelcome();
+        sendMessage();
+    }
+
+    function handleDocumentReferenced(data) {
+        if (!data || !data.qualifiedName) return;
+        var already = pendingDocuments.some(function (d) { return d.qualifiedName === data.qualifiedName; });
+        if (!already) {
+            pendingDocuments.push({ type: data.type || 'document', qualifiedName: data.qualifiedName });
+            renderDocumentPreviews();
+        }
+        chatInput.focus();
+    }
+
+    function renderDocumentPreviews() {
+        var container = document.getElementById('docPreview');
+        if (!container) return;
+        container.innerHTML = '';
+        if (pendingDocuments.length === 0) {
+            container.classList.remove('has-docs');
+            return;
+        }
+        container.classList.add('has-docs');
+        pendingDocuments.forEach(function (doc, idx) {
+            var chip = document.createElement('div');
+            chip.className = 'doc-chip doc-chip-' + doc.type;
+
+            var label = document.createElement('span');
+            label.className = 'doc-chip-name';
+            label.textContent = '@' + doc.qualifiedName;
+
+            var removeBtn = document.createElement('button');
+            removeBtn.className = 'doc-chip-remove';
+            removeBtn.innerHTML = '\u00D7';
+            removeBtn.title = 'Remove';
+            removeBtn.setAttribute('aria-label', 'Remove ' + doc.qualifiedName);
+            removeBtn.setAttribute('data-idx', idx);
+            removeBtn.addEventListener('click', function () {
+                var i = parseInt(this.getAttribute('data-idx'), 10);
+                pendingDocuments.splice(i, 1);
+                renderDocumentPreviews();
+            });
+
+            chip.appendChild(label);
+            chip.appendChild(removeBtn);
+            container.appendChild(chip);
+        });
+    }
+
     // Block WebView2 from navigating to dropped files globally
     document.addEventListener('dragover', function (e) {
         e.preventDefault();
@@ -1126,7 +1211,9 @@
         cumulativeOutputTokens = 0;
         chatHistory = [];
         pendingImages = [];
+        pendingDocuments = [];
         renderImagePreviews();
+        renderDocumentPreviews();
         updateTokenBadge();
         resetContextUsage();
         sendToBackend('new_chat');

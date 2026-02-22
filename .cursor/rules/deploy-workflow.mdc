@@ -15,12 +15,14 @@ if ($sp) {
     $sp | Stop-Process -Force
     Start-Sleep -Seconds 3
 }
+$lockFile = "C:\MendixProjects\LEA-development-current\Zeiterfassung 2024.mpr.lock"
+if (Test-Path $lockFile) { Remove-Item $lockFile -Force }
 ```
 
 Wait until the process is fully gone before proceeding.
 
 ## Step 2 — Build
-
+Before you do a build check your latest changes for issues and propose fixes and implent those fixes. Do this check only 1 time per changes round.
 ```powershell
 dotnet build src\AideLite.csproj -c Release
 ```
