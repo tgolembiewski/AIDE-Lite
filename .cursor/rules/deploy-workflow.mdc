@@ -7,6 +7,10 @@ alwaysApply: true
 
 After EVERY code change (no matter how small), you MUST follow this exact sequence before considering the task complete:
 
+## Step 0 - Check changes and save functional one to helpfile  of the extanestion module.
+Update help xcontent with latest changes if they are functional.
+Before you do a build check your latest changes for issues and propose fixes and implent those fixes. Do this check only 1 time per changes round.
+
 ## Step 1 — Close Studio Pro
 
 ```powershell
@@ -22,7 +26,7 @@ if (Test-Path $lockFile) { Remove-Item $lockFile -Force }
 Wait until the process is fully gone before proceeding.
 
 ## Step 2 — Build
-Before you do a build check your latest changes for issues and propose fixes and implent those fixes. Do this check only 1 time per changes round.
+
 ```powershell
 dotnet build src\AideLite.csproj -c Release
 ```

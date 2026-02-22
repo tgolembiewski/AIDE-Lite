@@ -342,6 +342,7 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
             var mode = data?["mode"]?.GetValue<string>() ?? "agent";
             var isAskMode = mode == "ask";
 
+            messageText = PrependFileAttachments(data, messageText);
             messageText = PrependDocumentReferences(data, messageText);
             messageText = PrependActiveDocumentContext(data, messageText);
 
@@ -664,6 +665,36 @@ public class AideLitePaneWebViewModel : WebViewDockablePaneViewModel
         {
             DiagLog($"HandleSaveChatState error: {ex.Message}");
         }
+    }
+
+    private static string PrependFileAttachments(JsonObject? data, string messageText)
+    {
+        var filesNode = data?["files"];
+        if (filesNode is not JsonArray filesArray || filesArray.Count == 0)
+            return messageText;
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var item in filesArray)
+        {
+            var name = item?["name"]?.GetValue<string>();
+            var language = item?["language"]?.GetValue<string>() ?? "";
+            var content = item?["content"]?.GetValue<string>();
+            if (string.IsNullOrEmpty(name) || content == null) continue;
+
+            var sizeLabel = content.Length >= 1024
+                ? $"{content.Length / 1024.0:F1} KB"
+                : $"{content.Length} B";
+
+            sb.AppendLine($"[Attached file: {name} ({language}, {sizeLabel})]");
+            sb.AppendLine($"```{language}");
+            sb.AppendLine(content);
+            sb.AppendLine("```");
+            sb.AppendLine();
+        }
+
+        return sb.Length > 0
+            ? sb.ToString() + messageText
+            : messageText;
     }
 
     private static string PrependDocumentReferences(JsonObject? data, string messageText)

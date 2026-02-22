@@ -15,8 +15,15 @@
 
     // --- Constants ---
     const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB
+    const MAX_FILE_SIZE = 500 * 1024; // 500 KB
     const MAX_TEXTAREA_HEIGHT = 120;
     const ALLOWED_IMAGE_TYPES = { 'image/jpeg': true, 'image/png': true, 'image/gif': true, 'image/webp': true };
+    const ALLOWED_FILE_EXTENSIONS = {
+        '.json': 'json', '.xml': 'xml', '.yaml': 'yaml', '.yml': 'yaml',
+        '.java': 'java', '.js': 'javascript', '.css': 'css', '.html': 'html',
+        '.md': 'markdown', '.txt': 'text', '.log': 'log', '.csv': 'csv',
+        '.sql': 'sql', '.properties': 'properties'
+    };
 
     // --- State ---
     let isStreaming = false;
@@ -27,6 +34,7 @@
     let currentTheme = 'light';
     let chatHistory = [];
     let pendingImages = [];
+    let pendingFiles = [];
     let pendingDocuments = [];
     let retryCountdownInterval = null;
     let retryAttemptCount = 0;
@@ -72,9 +80,14 @@
     const exportOverlay = document.getElementById('exportOverlay');
     const exportToolActivity = document.getElementById('exportToolActivity');
     const inputArea = document.getElementById('inputArea');
+    const filePreview = document.getElementById('filePreview');
     const imagePreview = document.getElementById('imagePreview');
-    const attachImageBtn = document.getElementById('attachImageBtn');
-    const imageFileInput = document.getElementById('imageFileInput');
+    const attachBtn = document.getElementById('attachBtn');
+    const attachFileInput = document.getElementById('attachFileInput');
+    const helpBtn = document.getElementById('helpBtn');
+    const helpModal = document.getElementById('helpModal');
+    const helpCloseBtn = document.getElementById('helpCloseBtn');
+    const helpOverlay = document.getElementById('helpOverlay');
     const activeDocBar = document.getElementById('activeDocBar');
     const activeDocIcon = document.getElementById('activeDocIcon');
     const activeDocText = document.getElementById('activeDocText');
@@ -166,14 +179,17 @@
 
         const images = pendingImages.slice();
         const docs = pendingDocuments.slice();
+        const files = pendingFiles.slice();
         hideWelcome();
-        appendMessage('user', text, images, docs);
-        chatHistory.push({ type: 'user', content: text, images: images, documents: docs });
+        appendMessage('user', text, images, docs, files);
+        chatHistory.push({ type: 'user', content: text, images: images, documents: docs, files: files });
         chatInput.value = '';
         chatInput.style.height = 'auto';
         pendingImages = [];
+        pendingFiles = [];
         pendingDocuments = [];
         renderImagePreviews();
+        renderFilePreviews();
         renderDocumentPreviews();
 
         isStreaming = true;
@@ -192,6 +208,11 @@
         if (docs.length > 0) {
             payload.documents = docs.map(function (d) {
                 return { type: d.type, qualifiedName: d.qualifiedName };
+            });
+        }
+        if (files.length > 0) {
+            payload.files = files.map(function (f) {
+                return { name: f.name, language: f.language, content: f.content };
             });
         }
         if (activeDocument) {
@@ -273,7 +294,7 @@
         div.appendChild(btn);
     }
 
-    function appendMessage(role, content, images, documents) {
+    function appendMessage(role, content, images, documents, files) {
         const div = document.createElement('div');
         div.className = 'message ' + role;
         if (role === 'assistant') {
@@ -290,6 +311,18 @@
                     docContainer.appendChild(chip);
                 });
                 div.appendChild(docContainer);
+            }
+            if (files && files.length > 0) {
+                const fileContainer = document.createElement('div');
+                fileContainer.className = 'file-attachments';
+                files.forEach(function (f) {
+                    const chip = document.createElement('span');
+                    chip.className = 'file-chip file-chip-sent file-chip-' + fileLanguageCategory(f.language);
+                    chip.textContent = '\uD83D\uDCC4 ' + f.name;
+                    chip.title = f.name + ' (' + formatFileSize(f.content.length) + ')';
+                    fileContainer.appendChild(chip);
+                });
+                div.appendChild(fileContainer);
             }
             if (images && images.length > 0) {
                 const imgContainer = document.createElement('div');
@@ -674,7 +707,7 @@
 
             switch (entry.type) {
                 case 'user':
-                    appendMessage('user', entry.content, entry.images, entry.documents);
+                    appendMessage('user', entry.content, entry.images, entry.documents, entry.files);
                     break;
                 case 'assistant':
                     appendMessage('assistant', entry.content);
@@ -819,6 +852,15 @@
 
     function closeExport() {
         exportModal.classList.add('hidden');
+    }
+
+    // --- Help ---
+    function openHelp() {
+        helpModal.classList.remove('hidden');
+    }
+
+    function closeHelp() {
+        helpModal.classList.add('hidden');
     }
 
     function exportChat() {
@@ -1062,6 +1104,103 @@
         });
     }
 
+    // --- Text File Attachment Handling ---
+    function getFileExtension(filename) {
+        var dot = filename.lastIndexOf('.');
+        return dot >= 0 ? filename.substring(dot).toLowerCase() : '';
+    }
+
+    function fileLanguageCategory(language) {
+        var code = { 'java': true, 'javascript': true, 'css': true, 'html': true, 'sql': true };
+        var data = { 'json': true, 'xml': true, 'yaml': true, 'csv': true, 'properties': true };
+        if (code[language]) return 'code';
+        if (data[language]) return 'data';
+        return 'docs';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return bytes + ' B';
+    }
+
+    function addTextFile(file) {
+        var ext = getFileExtension(file.name);
+        var language = ALLOWED_FILE_EXTENSIONS[ext];
+        if (!language) {
+            showToast('Unsupported file type: ' + ext + '. Use code, config, or text files.');
+            return;
+        }
+        if (file.size > MAX_FILE_SIZE) {
+            showToast('File too large (max 500 KB): ' + file.name);
+            return;
+        }
+        var alreadyAdded = pendingFiles.some(function (f) { return f.name === file.name; });
+        if (alreadyAdded) {
+            showToast('File already added: ' + file.name);
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            pendingFiles.push({
+                name: file.name,
+                language: language,
+                content: e.target.result,
+                size: file.size
+            });
+            renderFilePreviews();
+        };
+        reader.onerror = function () {
+            showToast('Failed to read file: ' + file.name);
+        };
+        reader.readAsText(file);
+    }
+
+    function renderFilePreviews() {
+        if (!filePreview) return;
+        filePreview.innerHTML = '';
+        if (pendingFiles.length === 0) {
+            filePreview.classList.remove('has-files');
+            return;
+        }
+        filePreview.classList.add('has-files');
+        pendingFiles.forEach(function (f, idx) {
+            var chip = document.createElement('div');
+            chip.className = 'file-chip file-chip-' + fileLanguageCategory(f.language);
+
+            var icon = document.createElement('span');
+            icon.className = 'file-chip-icon';
+            icon.textContent = '\uD83D\uDCC4';
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'file-chip-name';
+            nameSpan.textContent = f.name;
+            nameSpan.title = f.name;
+
+            var sizeSpan = document.createElement('span');
+            sizeSpan.className = 'file-chip-size';
+            sizeSpan.textContent = formatFileSize(f.size);
+
+            var removeBtn = document.createElement('button');
+            removeBtn.className = 'file-chip-remove';
+            removeBtn.innerHTML = '\u00D7';
+            removeBtn.title = 'Remove';
+            removeBtn.setAttribute('aria-label', 'Remove ' + f.name);
+            removeBtn.setAttribute('data-idx', idx);
+            removeBtn.addEventListener('click', function () {
+                var i = parseInt(this.getAttribute('data-idx'), 10);
+                pendingFiles.splice(i, 1);
+                renderFilePreviews();
+            });
+
+            chip.appendChild(icon);
+            chip.appendChild(nameSpan);
+            chip.appendChild(sizeSpan);
+            chip.appendChild(removeBtn);
+            filePreview.appendChild(chip);
+        });
+    }
+
     // --- Active Document Tracking ---
     function handleActiveDocumentChanged(data) {
         if (!data || !data.name) {
@@ -1179,36 +1318,51 @@
         const files = e.dataTransfer && e.dataTransfer.files;
         if (files) {
             for (let i = 0; i < files.length; i++) {
-                addImageFile(files[i]);
+                var f = files[i];
+                if (f.type && ALLOWED_IMAGE_TYPES[f.type]) {
+                    addImageFile(f);
+                } else {
+                    addTextFile(f);
+                }
             }
         }
     });
 
-    // Paste images from clipboard
+    // Paste images or text files from clipboard
     chatInput.addEventListener('paste', function (e) {
         const items = e.clipboardData && e.clipboardData.items;
         if (!items) return;
         for (let i = 0; i < items.length; i++) {
-            if (items[i].kind === 'file' && ALLOWED_IMAGE_TYPES[items[i].type]) {
+            if (items[i].kind === 'file') {
                 const file = items[i].getAsFile();
-                if (file) addImageFile(file);
+                if (!file) continue;
+                if (ALLOWED_IMAGE_TYPES[file.type]) {
+                    addImageFile(file);
+                } else {
+                    addTextFile(file);
+                }
             }
         }
     });
 
-    // Attach image via file picker button
-    attachImageBtn.addEventListener('click', function () {
-        imageFileInput.value = '';
-        imageFileInput.click();
+    // Attach image or file via unified picker button
+    attachBtn.addEventListener('click', function () {
+        attachFileInput.value = '';
+        attachFileInput.click();
     });
-    imageFileInput.addEventListener('change', function () {
-        const files = imageFileInput.files;
+    attachFileInput.addEventListener('change', function () {
+        const files = attachFileInput.files;
         if (files) {
             for (let i = 0; i < files.length; i++) {
-                addImageFile(files[i]);
+                var f = files[i];
+                if (f.type && ALLOWED_IMAGE_TYPES[f.type]) {
+                    addImageFile(f);
+                } else {
+                    addTextFile(f);
+                }
             }
         }
-        imageFileInput.value = '';
+        attachFileInput.value = '';
     });
 
     // --- Event Listeners & UI Wiring ---
@@ -1259,8 +1413,10 @@
         cumulativeOutputTokens = 0;
         chatHistory = [];
         pendingImages = [];
+        pendingFiles = [];
         pendingDocuments = [];
         renderImagePreviews();
+        renderFilePreviews();
         renderDocumentPreviews();
         updateTokenBadge();
         resetContextUsage();
@@ -1293,6 +1449,10 @@
     if (exportDownloadBtn) exportDownloadBtn.addEventListener('click', exportChat);
     if (exportCancelBtn) exportCancelBtn.addEventListener('click', closeExport);
     if (exportOverlay) exportOverlay.addEventListener('click', closeExport);
+
+    if (helpBtn) helpBtn.addEventListener('click', openHelp);
+    if (helpCloseBtn) helpCloseBtn.addEventListener('click', closeHelp);
+    if (helpOverlay) helpOverlay.addEventListener('click', closeHelp);
 
     if (activeDocAddBtn) {
         activeDocAddBtn.addEventListener('click', function () {
