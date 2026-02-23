@@ -17,12 +17,10 @@
 
     AIDE.handleMessage = function (event) {
         var envelope = event.data;
-        if (!envelope) return;
+        if (!envelope || typeof envelope.message !== 'string') return;
         var type = envelope.message;
         var data = envelope.data;
-        if (type) {
-            AIDE.handleBackendMessage(type, data);
-        }
+        AIDE.handleBackendMessage(type, data);
     };
 
     AIDE.handleBackendMessage = function (type, data) {
@@ -90,6 +88,9 @@
                 break;
             case 'toast':
                 AIDE.showToast(data.message);
+                break;
+            case 'restore_view_state':
+                AIDE.handleRestoreViewState(data);
                 break;
         }
     };

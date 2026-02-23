@@ -65,6 +65,8 @@ public class AideLiteWebServerExtension : WebServerExtension
             // Disable caching so code changes take effect immediately during development
             response.Headers.Add("Cache-Control", "no-store, no-cache, must-revalidate");
             response.Headers.Add("Pragma", "no-cache");
+            // Security headers
+            response.Headers.Add("X-Content-Type-Options", "nosniff");
             await response.OutputStream.WriteAsync(content, cancellationToken);
         };
     }

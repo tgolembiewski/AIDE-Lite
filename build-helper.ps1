@@ -7,6 +7,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ============================================================
+# WARNING: PATHS BELOW ARE HARDCODED TO A SPECIFIC DEVELOPER'S
+# MACHINE. You MUST update $MendixBase, $ProjectDir, and
+# $MendixProjectPath to match your local environment before use.
+# This is a personal dev helper, not part of the core extension.
+# ============================================================
 # Configuration — edit these paths when versions change
 # ============================================================
 $MendixVersion      = "10.24.13.86719"

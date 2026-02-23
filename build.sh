@@ -4,6 +4,11 @@ set -euo pipefail
 # ============================================================
 # AIDE-Lite Build Bridge — Mac → Parallels Windows 11
 # ============================================================
+# WARNING: VM_NAME and HELPER_SCRIPT below are hardcoded to a
+# specific developer's Parallels setup. You MUST update them to
+# match your local environment before use. This is a personal
+# dev helper, not part of the core extension.
+# ============================================================
 # Orchestrates build/deploy via prlctl exec into the Parallels VM.
 # Usage: ./build.sh [all|build|rebuild|quick|close|deploy|launch|status]
 

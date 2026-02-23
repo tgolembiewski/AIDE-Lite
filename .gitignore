@@ -10,3 +10,13 @@ CLAUDE.md
 docs/
 ._.DS_Store
 .DS_Store
+
+# Secrets & credentials — prevent accidental commits
+.env
+.env.*
+*.pfx
+*.snk
+*.pem
+*.key
+secrets.json
+appsettings.Development.json

@@ -3,8 +3,6 @@
 // Copyright (c) 2025-2026 Neel Desai / Golden Earth Software Consulting Inc.
 // State transfer DTO for toggling between pane and tab views
 // ============================================================================
-using AideLite.Services;
-
 namespace AideLite.Models;
 
 /// <summary>
@@ -13,7 +11,6 @@ namespace AideLite.Models;
 /// </summary>
 public class ViewStateSnapshot
 {
-    public List<DisplayHistoryEntry> DisplayHistory { get; init; } = new();
     public string? ActiveDocumentName { get; init; }
     public string? ActiveDocumentType { get; init; }
     public string? ActiveDocumentQualifiedName { get; init; }

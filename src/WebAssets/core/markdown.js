@@ -58,8 +58,8 @@
         // Blockquotes
         html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
 
-        // Links [text](url) — only allow http/https URLs
-        html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        // Links [text](url) — only allow http/https URLs, exclude whitespace and quotes from URL
+        html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
         // Unordered lists
         html = html.replace(/^- (.+)$/gm, '<li class="ul-item">$1</li>');
@@ -83,7 +83,7 @@
             var row = cells.map(function (c) { return '<' + tag + '>' + c + '</' + tag + '>'; }).join('');
             return '<tr>' + row + '</tr>';
         });
-        html = html.replace(/\n?<!-- table separator -->\n?/g, '');
+        html = html.replace(/<!-- table separator -->\s*/g, '');
         html = html.replace(/((<tr>[\s\S]*?<\/tr>\s*)+)/g, function () {
             tableIsHeader = true;
             return '<table>' + arguments[0] + '</table>';

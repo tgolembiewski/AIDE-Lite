@@ -7,8 +7,6 @@ using System.ComponentModel.Composition;
 using System.Runtime.Versioning;
 using AideLite.Services;
 using AideLite.ViewModels;
-using Mendix.StudioPro.ExtensionsAPI.Model.Microflows;
-using Mendix.StudioPro.ExtensionsAPI.Model.Pages;
 using Mendix.StudioPro.ExtensionsAPI.UI.DockablePane;
 using Mendix.StudioPro.ExtensionsAPI.UI.Events;
 using Mendix.StudioPro.ExtensionsAPI.UI.Services;
@@ -120,16 +118,17 @@ public class AideLitePaneExtension : DockablePaneExtension
         _currentViewModel.OnClosed = () =>
         {
             _logService.Info("AIDE Lite: Pane closed");
-            UnsubscribeFromActiveDocument();
 
             if (_viewCoordinator!.IsToggling)
             {
-                // During a toggle, ChatController manages its own detach
+                // During a toggle, keep active document subscription alive —
+                // it routes updates through _chatController which persists across views.
                 _currentViewModel = null;
                 return;
             }
 
-            _currentViewModel?.Cleanup();
+            UnsubscribeFromActiveDocument();
+            _chatController?.FullCleanup();
             _currentViewModel = null;
             _viewCoordinator.OnPaneClosed();
         };
@@ -147,12 +146,14 @@ public class AideLitePaneExtension : DockablePaneExtension
 
     private void OnActiveDocumentChanged(ActiveDocumentChanged e)
     {
-        var vm = _currentViewModel;
-        if (vm == null) return;
+        // Route through ChatController directly (not ViewModel) so active document
+        // tracking works in both Pane and Tab mode (ViewModel may be null in Tab mode).
+        var controller = _chatController;
+        if (controller == null) return;
 
         if (e.DocumentName == null)
         {
-            vm.UpdateActiveDocument(null, null, null);
+            controller.UpdateActiveDocument(null, null, null);
             return;
         }
 
@@ -173,7 +174,7 @@ public class AideLitePaneExtension : DockablePaneExtension
         };
 
         var qualifiedName = ResolveQualifiedName(e.DocumentName);
-        vm.UpdateActiveDocument(e.DocumentName, docType, qualifiedName);
+        controller.UpdateActiveDocument(e.DocumentName, docType, qualifiedName);
     }
 
     private string ResolveQualifiedName(string documentName)

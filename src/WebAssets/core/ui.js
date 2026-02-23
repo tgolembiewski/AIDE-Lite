@@ -87,8 +87,17 @@
                 var imgContainer = document.createElement('div');
                 imgContainer.className = 'image-attachments';
                 images.forEach(function (img) {
+                    // Security: validate media type at render time (not just at add time)
+                    // to protect against tampered conversation history
+                    var safeType = AIDE.CONST.ALLOWED_IMAGE_TYPES[img.mediaType] ? img.mediaType : null;
+                    var src = img.dataUrl || '';
+                    if (!src && safeType && img.base64) {
+                        src = 'data:' + safeType + ';base64,' + img.base64;
+                    }
+                    // Only render if src starts with a valid data:image/ prefix
+                    if (!src || (!src.startsWith('data:image/') && !src.startsWith('blob:'))) return;
                     var imgEl = document.createElement('img');
-                    imgEl.src = img.dataUrl || ('data:' + img.mediaType + ';base64,' + img.base64);
+                    imgEl.src = src;
                     imgEl.alt = img.name || 'Attached image';
                     imgEl.title = img.name || 'Attached image';
                     imgContainer.appendChild(imgEl);
@@ -197,6 +206,24 @@
         if (!data || !data.mode) return;
         state.set('viewMode', data.mode);
         AIDE.updateToggleButton();
+    };
+
+    // --- View State Restore (after pane/tab toggle) ---
+
+    AIDE.handleRestoreViewState = function (data) {
+        if (!data) return;
+
+        // Restore active document bar
+        if (data.activeDocumentName) {
+            state.set('activeDocument', {
+                name: data.activeDocumentName,
+                type: data.activeDocumentType || 'document',
+                qualifiedName: data.activeDocumentQualifiedName || data.activeDocumentName
+            });
+        } else {
+            state.set('activeDocument', null);
+        }
+        AIDE.updateActiveDocBar();
     };
 
 })(window.AIDE = window.AIDE || {});

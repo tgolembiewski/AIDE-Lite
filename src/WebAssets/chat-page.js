@@ -252,14 +252,23 @@
         });
     });
 
-    // --- Document reference click handler ---
+    // --- Chat area delegated click handlers ---
     d.chatArea.addEventListener('click', function (e) {
         var target = e.target;
-        if (!target.classList.contains('doc-ref')) return;
-        var qualifiedName = target.getAttribute('data-qualified-name');
-        var docType = target.getAttribute('data-doc-type');
-        if (qualifiedName) {
-            AIDE.sendToBackend('open_document', { qualifiedName: qualifiedName, docType: docType || '' });
+
+        // Document reference clicks
+        if (target.classList.contains('doc-ref')) {
+            var qualifiedName = target.getAttribute('data-qualified-name');
+            var docType = target.getAttribute('data-doc-type');
+            if (qualifiedName) {
+                AIDE.sendToBackend('open_document', { qualifiedName: qualifiedName, docType: docType || '' });
+            }
+            return;
+        }
+
+        // Code block copy button clicks (delegated instead of inline onclick for CSP compliance)
+        if (target.classList.contains('code-copy-btn')) {
+            AIDE.copyCodeBlock(target);
         }
     });
 
@@ -270,5 +279,15 @@
     // --- Initialize ---
     AIDE.initBridge();
     AIDE.sendToBackend('get_settings');
+
+    // Security: freeze AIDE namespace to prevent runtime tampering by injected scripts.
+    // AIDE.state remains mutable internally (closure-based), but the public API surface
+    // (function references, constants, dom refs) cannot be overwritten.
+    Object.freeze(AIDE.CONST);
+    Object.freeze(AIDE.CONST.VIEW_MODES);
+    Object.freeze(AIDE.CONST.ALLOWED_IMAGE_TYPES);
+    Object.freeze(AIDE.CONST.ALLOWED_FILE_EXTENSIONS);
+    Object.freeze(AIDE.dom);
+    Object.freeze(AIDE);
 
 })(window.AIDE = window.AIDE || {});

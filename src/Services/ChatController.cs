@@ -540,6 +540,8 @@ public class ChatController
             DiagLog($"[4/6] Sending to Claude API (mode: {mode}, messages: {messages.Count}, tools: {tools?.Count ?? 0}, context: {(_cachedContext != null ? "loaded" : "none")}, caching: {cachingEnabled})");
 
             var maxToolRounds = config.MaxToolRounds;
+            const int maxWriteOpsPerTurn = 5;
+            var writeOpCount = 0;
             var totalInputTokens = 0;
             var totalOutputTokens = 0;
             var totalCacheCreation = 0;
@@ -590,6 +592,21 @@ public class ChatController
                 var toolResults = new List<(string ToolUseId, string Content, bool IsError)>();
                 foreach (var toolCall in response.ToolCalls)
                 {
+                    // Safety cap: limit write operations per conversation turn to prevent
+                    // prompt injection from cascading destructive changes
+                    var toolDef = _toolRegistry?.GetTool(toolCall.Name);
+                    if (toolDef != null && toolDef.IsWriteTool)
+                    {
+                        writeOpCount++;
+                        if (writeOpCount > maxWriteOpsPerTurn)
+                        {
+                            DiagLog($"[SECURITY] Write-tool safety cap reached ({maxWriteOpsPerTurn}). Blocking '{toolCall.Name}'.");
+                            toolResults.Add((toolCall.Id, $"Safety limit: maximum {maxWriteOpsPerTurn} write operations per conversation turn reached. Ask the user to continue in a new message if more changes are needed.", true));
+                            SendToWebView("tool_result", new { toolName = toolCall.Name, summary = $"Blocked — safety limit of {maxWriteOpsPerTurn} write operations reached" });
+                            continue;
+                        }
+                    }
+
                     var toolResult = _toolExecutor!.Execute(toolCall.Name, toolCall.InputJson, isAskMode);
                     SendToWebView("tool_result", new
                     {
@@ -642,6 +659,11 @@ public class ChatController
         }
     }
 
+    private static readonly HashSet<string> ValidDocTypes = new(StringComparer.Ordinal)
+    {
+        "entity", "microflow", "page", "enumeration", "document", "constant", "java_action"
+    };
+
     private void HandleOpenDocument(JsonObject? data)
     {
         var qualifiedName = data?["qualifiedName"]?.GetValue<string>();
@@ -650,6 +672,9 @@ public class ChatController
             DiagLog("HandleOpenDocument: no qualifiedName provided");
             return;
         }
+
+        // Sanitize for log injection prevention — qualifiedName comes from JS (user-controllable)
+        var safeQName = SanitizePromptValue(qualifiedName);
 
         if (Model == null)
         {
@@ -660,13 +685,14 @@ public class ChatController
         var dotIndex = qualifiedName.IndexOf('.');
         if (dotIndex < 0)
         {
-            DiagLog($"HandleOpenDocument: invalid qualifiedName format '{qualifiedName}'");
+            DiagLog($"HandleOpenDocument: invalid qualifiedName format '{safeQName}'");
             return;
         }
 
         var moduleName = qualifiedName[..dotIndex];
         var docName = qualifiedName[(dotIndex + 1)..];
-        var docType = data?["docType"]?.GetValue<string>() ?? "";
+        var rawDocType = data?["docType"]?.GetValue<string>() ?? "";
+        var docType = ValidDocTypes.Contains(rawDocType) ? rawDocType : "";
 
         try
         {
@@ -679,7 +705,7 @@ public class ChatController
                 {
                     var domainModel = module.DomainModel;
                     var opened = _dockingService.TryOpenEditor(domainModel);
-                    DiagLog($"HandleOpenDocument: TryOpenEditor(DomainModel for entity '{qualifiedName}') = {opened}");
+                    DiagLog($"HandleOpenDocument: TryOpenEditor(DomainModel for entity '{safeQName}') = {opened}");
                     return;
                 }
 
@@ -689,7 +715,7 @@ public class ChatController
                     if (doc.Name == docName)
                     {
                         var opened = _dockingService.TryOpenEditor(doc);
-                        DiagLog($"HandleOpenDocument: TryOpenEditor('{qualifiedName}') = {opened}");
+                        DiagLog($"HandleOpenDocument: TryOpenEditor('{safeQName}') = {opened}");
                         return;
                     }
                 }
@@ -700,7 +726,7 @@ public class ChatController
                     if (domainModel.GetEntities().Any(e => e.Name == docName))
                     {
                         var opened = _dockingService.TryOpenEditor(domainModel);
-                        DiagLog($"HandleOpenDocument: entity fallback TryOpenEditor(DomainModel for '{qualifiedName}') = {opened}");
+                        DiagLog($"HandleOpenDocument: entity fallback TryOpenEditor(DomainModel for '{safeQName}') = {opened}");
                         return;
                     }
                 }
@@ -721,11 +747,11 @@ public class ChatController
 
                 break;
             }
-            DiagLog($"HandleOpenDocument: document '{qualifiedName}' not found in model");
+            DiagLog($"HandleOpenDocument: document '{safeQName}' not found in model");
         }
         catch (Exception ex)
         {
-            DiagLog($"HandleOpenDocument: error opening '{qualifiedName}': {ex.Message}");
+            DiagLog($"HandleOpenDocument: error opening '{safeQName}': {ex.Message}");
         }
     }
 
@@ -1036,9 +1062,12 @@ public class ChatController
                 ? $"{content.Length / 1024.0:F1} KB"
                 : $"{content.Length} B";
 
+            // Security: escape triple backticks in file content to prevent code fence breakout
+            // that could inject prompt injection text outside the code block
+            var safeContent = content.Replace("```", "` ` `");
             sb.AppendLine($"[Attached file: {name} ({language}, {sizeLabel})]");
             sb.AppendLine($"```{language}");
-            sb.AppendLine(content);
+            sb.AppendLine(safeContent);
             sb.AppendLine("```");
             sb.AppendLine();
             fileCount++;
@@ -1076,7 +1105,7 @@ public class ChatController
                     => "use get_document_details to inspect it",
                 _ => "use search_model to find more information"
             };
-            lines.Add($"[The user is asking about: @{qname} ({type}) — {toolHint}]");
+            lines.Add($"[The user is asking about: @{SanitizePromptValue(qname)} ({SanitizePromptValue(type)}) — {toolHint}]");
         }
 
         return lines.Count > 0
@@ -1109,8 +1138,25 @@ public class ChatController
             _ => "use search_model to find more information"
         };
 
-        var contextLine = $"[The user is currently viewing: @{_activeDocumentQualifiedName} ({type}) — {toolHint}]";
+        var contextLine = $"[The user is currently viewing: @{SanitizePromptValue(_activeDocumentQualifiedName)} ({SanitizePromptValue(type)}) — {toolHint}]";
         return contextLine + "\n\n" + messageText;
+    }
+
+    /// <summary>
+    /// Sanitize a model element name for safe embedding in prompt text.
+    /// Strips newlines and control characters, truncates to prevent injection.
+    /// </summary>
+    private static string SanitizePromptValue(string? value, int maxLength = 150)
+    {
+        if (string.IsNullOrEmpty(value)) return value ?? "";
+        var sb = new System.Text.StringBuilder(Math.Min(value.Length, maxLength));
+        foreach (var c in value)
+        {
+            if (c == '\n' || c == '\r' || char.IsControl(c)) sb.Append(' ');
+            else sb.Append(c);
+            if (sb.Length >= maxLength) break;
+        }
+        return sb.ToString();
     }
 
     private static readonly HashSet<string> AllowedImageMediaTypes = new(StringComparer.Ordinal)

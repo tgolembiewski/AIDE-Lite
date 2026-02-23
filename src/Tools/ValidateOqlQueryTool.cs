@@ -81,6 +81,10 @@ public class ValidateOqlQueryTool : IClaudeTool
         if (string.IsNullOrWhiteSpace(oqlQuery))
             return ToolResult.Fail("oqlQuery is required");
 
+        const int MaxOqlLength = 50_000;
+        if (oqlQuery.Length > MaxOqlLength)
+            return ToolResult.Fail($"OQL query too long ({oqlQuery.Length} > {MaxOqlLength} chars)");
+
         var errors = new List<string>();
         var warnings = new List<string>();
 
@@ -126,7 +130,7 @@ public class ValidateOqlQueryTool : IClaudeTool
                 continue;
 
             // Skip module-qualified references (Module.Entity, not alias.Attribute)
-            if (EntityPattern.IsMatch($"FROM {alias}.{attrName} AS x"))
+            if (_extractor.FindModule(alias) != null)
                 continue;
 
             var module = _extractor.FindModule(entityRef.Module);

@@ -108,7 +108,7 @@ public class ViewToggleCoordinator
         if (IsToggling) return; // During toggle, we manage this ourselves
 
         _logService.Info("AIDE Lite: Tab closed by user, resetting to Pane mode");
-        _chatController.DetachWebView();
+        _chatController.FullCleanup();
         _currentTab = null;
         CurrentViewMode = ViewMode.Pane;
     }
