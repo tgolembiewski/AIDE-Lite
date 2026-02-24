@@ -22,3 +22,4 @@ secrets.json
 appsettings.Development.json
 build-helper.ps1
 .cursor/rules/deploy-workflow.mdc
+build.sh

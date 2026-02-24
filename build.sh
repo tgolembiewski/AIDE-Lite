@@ -15,6 +15,7 @@ set -euo pipefail
 VM_NAME="Windows 11"
 HELPER_SCRIPT='C:\Users\tomekgolembiewski\ClaudeWinProjects\AIDE-Lite\build-helper.ps1'
 
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
