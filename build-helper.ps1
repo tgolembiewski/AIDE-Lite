@@ -23,7 +23,7 @@ $ProjectDir         = "C:\Users\tomekgolembiewski\ClaudeWinProjects\AIDE-Lite"
 $CsprojPath         = "$ProjectDir\src\AideLite.csproj"
 $BuildOutput        = "$ProjectDir\src\bin\Release\net8.0-windows"
 
-$MendixProjectPath  = "C:\MendixProjects\LEA-development-current\Zeiterfassung 2024.mpr"
+$MendixProjectPath  = ""
 $LockFile           = "$MendixProjectPath.lock"
 
 # ============================================================
