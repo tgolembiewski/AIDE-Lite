@@ -23,3 +23,9 @@ appsettings.Development.json
 build-helper.ps1
 .cursor/rules/deploy-workflow.mdc
 build.sh
+
+# Beads task tracking (local per-developer)
+.beads/
+AGENTS.md
+._.beads
+._AGENTS.md
