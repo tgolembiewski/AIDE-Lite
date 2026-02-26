@@ -263,8 +263,8 @@
                     <h4>&#x1F4AC; Chat Modes</h4>
                     <p>Select from the dropdown next to the input:</p>
                     <ul>
-                        <li><strong class="help-highlight-agent">Agent</strong> &mdash; Claude can read your app model AND create/edit microflows. Use for making changes.</li>
-                        <li><strong class="help-highlight-ask">Ask</strong> &mdash; Read-only mode. Claude inspects your model but cannot modify anything. Use for questions and analysis.</li>
+                        <li><strong class="help-highlight-agent">Agent</strong> &mdash; AIDE can read your app model AND create/edit microflows. Use for making changes.</li>
+                        <li><strong class="help-highlight-ask">Ask</strong> &mdash; Read-only mode. AIDE inspects your model but cannot modify anything. Use for questions and analysis.</li>
                     </ul>
                 </div>
 
@@ -285,7 +285,7 @@
                 <div class="help-section">
                     <h4>&#x1F4C4; Active Document Tracking</h4>
                     <p>AIDE automatically detects which document you have open in Studio Pro and shows it in a bar below the context status.</p>
-                    <p>When you send a message, this is automatically included as context so Claude knows what you&rsquo;re looking at. Click the <strong>+</strong> button on the indicator bar to add it as an explicit @-reference chip.</p>
+                    <p>When you send a message, this is automatically included as context so AIDE knows what you&rsquo;re looking at. Click the <strong>+</strong> button on the indicator bar to add it as an explicit @-reference chip.</p>
                     <p>If you add explicit @-chips, the automatic active document context is skipped to avoid redundancy.</p>
                 </div>
 
@@ -293,7 +293,7 @@
                     <h4>&#x1F5B1; Right-Click Context Menu</h4>
                     <p>Right-click any <strong>document</strong> (microflow, page) in the App Explorer or any <strong>entity</strong> in the Domain Model editor:</p>
                     <ul>
-                        <li><strong>Explain with AIDE Lite</strong> &mdash; Opens AIDE and immediately sends &ldquo;Explain @Module.Element&rdquo; to Claude.</li>
+                        <li><strong>Explain with AIDE Lite</strong> &mdash; Opens AIDE and immediately sends &ldquo;Explain @Module.Element&rdquo;.</li>
                         <li><strong>Add to AIDE Lite Context</strong> &mdash; Opens AIDE and adds an @-reference chip. You type your own question.</li>
                     </ul>
                     <p>Chips are color-coded: <span class="help-chip help-chip-entity">Entity</span> <span class="help-chip help-chip-microflow">Microflow</span> <span class="help-chip help-chip-page">Page</span></p>
@@ -303,7 +303,7 @@
                     <h4>&#x1F4CE; Attachments</h4>
                     <p>Click the <span class="help-icon-inline">&#x2795;</span> button, <strong>drag &amp; drop</strong> onto the input area, or <strong>paste from clipboard</strong>:</p>
                     <p><strong>Images</strong> (JPEG, PNG, GIF, WebP &mdash; max 20 MB each):<br>
-                    Shown as thumbnail previews. Claude can see and analyze the image.</p>
+                    Shown as thumbnail previews. AIDE can see and analyze the image.</p>
                     <p><strong>Text files</strong> (max 500 KB each):<br>
                     Shown as file chips. Content is sent as formatted code blocks.</p>
                     <p>Supported text types:</p>
@@ -327,9 +327,26 @@
                 </div>
 
                 <div class="help-section">
-                    <h4>&#x1F527; What Claude Can Do</h4>
+                    <h4>&#x1F527; What AIDE Can Do</h4>
                     <p><strong>Read (9 tools):</strong> List modules, entities, associations, enumerations, pages, microflows. Get full details on entities and microflows. Search any element by name.</p>
                     <p><strong>Write (5 tools):</strong> Create microflows (21 activity types), rename microflows, add activities, replace microflows, edit activity properties.</p>
+                    <p><strong>XPath &amp; OQL:</strong> Generate XPath expressions and OQL queries from natural language descriptions of your domain model.</p>
+                </div>
+
+                <div class="help-section">
+                    <h4>&#x1F4AC; Prompt Examples</h4>
+                    <p><strong>XPath:</strong></p>
+                    <ul>
+                        <li><code>Write an XPath to find all Orders placed in the last 30 days with status 'Completed'</code></li>
+                        <li><code>XPath for Customers who have at least one active Subscription</code></li>
+                        <li><code>Give me an XPath constraint for Products where Price &gt; 100 and Category is 'Electronics'</code></li>
+                    </ul>
+                    <p><strong>OQL:</strong></p>
+                    <ul>
+                        <li><code>Write an OQL query to count Orders grouped by Customer and month</code></li>
+                        <li><code>OQL to get the top 10 Products by total revenue</code></li>
+                        <li><code>Generate an OQL query joining Invoices with InvoiceLines and filtering by date range</code></li>
+                    </ul>
                 </div>
 
                 <div class="help-section">
@@ -343,7 +360,7 @@
 
                 <div class="help-section">
                     <h4>&#x1F4DD; Custom Project Rules</h4>
-                    <p>Create a file named <code>.aide-lite-rules.md</code> in the root of your Mendix project. Its content is injected into Claude&rsquo;s system prompt. Use it for project-specific naming conventions, domain terminology, or business logic constraints.</p>
+                    <p>Create a file named <code>.aide-lite-rules.md</code> in the root of your Mendix project. Its content is injected into AIDE&rsquo;s system prompt. Use it for project-specific naming conventions, domain terminology, or business logic constraints.</p>
                 </div>
 
                 <div class="help-section">
@@ -366,7 +383,7 @@
                 <div class="help-section">
                     <h4>&#x26A0; Known Limitations</h4>
                     <ul>
-                        <li>No decision, loop, or merge creation (sequential activities only &mdash; Claude guides manual placement)</li>
+                        <li>No decision, loop, or merge creation (sequential activities only &mdash; AIDE guides manual placement)</li>
                         <li>No page or nanoflow creation</li>
                         <li>No entity or enumeration creation (read-only domain model)</li>
                         <li>No security rule APIs</li>

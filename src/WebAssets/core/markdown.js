@@ -317,4 +317,21 @@
         div.appendChild(btn);
     };
 
+    AIDE.addPlainCopyButton = function (div, text) {
+        var btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.title = 'Copy text';
+        btn.innerHTML = '&#x2398;';
+        btn.addEventListener('click', function () {
+            AIDE.copyToClipboard(text).then(function () {
+                btn.textContent = '\u2713';
+                setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
+            }).catch(function () {
+                btn.textContent = '!';
+                setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
+            });
+        });
+        div.appendChild(btn);
+    };
+
 })(window.AIDE = window.AIDE || {});

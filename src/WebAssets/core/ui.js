@@ -107,6 +107,7 @@
             var textNode = document.createElement('span');
             textNode.textContent = content;
             div.appendChild(textNode);
+            AIDE.addPlainCopyButton(div, content);
         }
         AIDE.dom.chatArea.appendChild(div);
         AIDE.scrollToBottom();
