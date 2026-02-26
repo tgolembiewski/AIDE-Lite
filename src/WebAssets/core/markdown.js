@@ -23,8 +23,9 @@
         html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function (m, lang, code) {
             var idx = codeBlocks.length;
             var escaped = AIDE.escapeHtml(code);
+            var dataCode = escaped.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
             codeBlocks.push(
-                '<div class="code-block-wrapper">' +
+                '<div class="code-block-wrapper" data-code="' + dataCode + '">' +
                 '<button class="code-copy-btn" title="Copy code" onclick="AIDE.copyCodeBlock(this)">&#x2398;</button>' +
                 '<pre><code class="language-' + (lang || '') + '">' + escaped + '</code></pre>' +
                 '</div>'
@@ -250,10 +251,29 @@
     AIDE.copyCodeBlock = function (btn) {
         var wrapper = btn.closest('.code-block-wrapper');
         if (!wrapper) return;
-        var code = wrapper.querySelector('code');
-        if (!code) return;
-        var text = code.textContent;
-        AIDE.copyToClipboard(text).then(function () {
+
+        // Read raw code from data attribute (preserves newlines/tabs reliably)
+        var text = wrapper.getAttribute('data-code');
+        if (!text) {
+            var code = wrapper.querySelector('code');
+            text = code ? code.textContent : '';
+        }
+
+        var escapedLines = AIDE.escapeHtml(text).replace(/\n/g, '<br>');
+        var styledHtml = '<div style="background:#1e1e2e;color:#cdd6f4;padding:10px;border-radius:6px;margin:6px 0;font-family:&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;font-size:12px;white-space:pre;">' +
+            escapedLines +
+            '</div>';
+
+        var copyPromise = (typeof ClipboardItem !== 'undefined' && navigator.clipboard && navigator.clipboard.write)
+            ? navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': new Blob([styledHtml], { type: 'text/html' }),
+                    'text/plain': new Blob([text], { type: 'text/plain' })
+                })
+            ]).catch(function () { return AIDE.copyToClipboard(text); })
+            : AIDE.copyToClipboard(text);
+
+        copyPromise.then(function () {
             btn.textContent = '\u2713';
             setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
         }).catch(function () {
