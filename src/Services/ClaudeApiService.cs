@@ -17,7 +17,6 @@ namespace AideLite.Services;
 [SupportedOSPlatform("windows")]
 public class ClaudeApiService
 {
-    private readonly IHttpClientService _httpClientService;
     private readonly ConfigurationService _configService;
     private readonly ILogService _logService;
     private CancellationTokenSource? _currentCts;
@@ -34,11 +33,9 @@ public class ClaudeApiService
     };
 
     public ClaudeApiService(
-        IHttpClientService httpClientService,
         ConfigurationService configService,
         ILogService logService)
     {
-        _httpClientService = httpClientService;
         _configService = configService;
         _logService = logService;
     }
@@ -153,17 +150,17 @@ public class ClaudeApiService
         var retryDelay = config.RetryDelaySeconds;
         _logService.Info($"AIDE Lite: [API] Retry config: max={maxRetries}, delay={retryDelay}s");
 
+        using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromMinutes(5);
+
         for (var attempt = 0; attempt <= maxRetries; attempt++)
         {
             ct.ThrowIfCancellationRequested();
 
             _logService.Info($"AIDE Lite: [API] Attempt {attempt + 1}/{maxRetries + 1}...");
 
-            using var httpClient = _httpClientService.CreateHttpClient();
-            httpClient.Timeout = TimeSpan.FromMinutes(5);
-
             using var request = CreateHttpRequest(apiKey, requestJson, config.PromptCachingEnabled);
-            using var response = await httpClient.SendAsync(request, ct);
+            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             var statusCode = (int)response.StatusCode;
             _logService.Info($"AIDE Lite: [API] HTTP {statusCode} {response.StatusCode}");
 

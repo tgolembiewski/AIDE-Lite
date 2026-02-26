@@ -27,7 +27,6 @@ public class ChatController
     private readonly Func<IModel?> _getModel;
     private readonly ILogService _logService;
     private readonly ConfigurationService _configService;
-    private readonly IHttpClientService _httpClientService;
     private readonly IDomainModelService _domainModelService;
     private readonly IMicroflowService _microflowService;
     private readonly IMicroflowActivitiesService _activitiesService;
@@ -83,7 +82,6 @@ public class ChatController
         Func<IModel?> getModel,
         ILogService logService,
         ConfigurationService configService,
-        IHttpClientService httpClientService,
         IDomainModelService domainModelService,
         IMicroflowService microflowService,
         IMicroflowActivitiesService activitiesService,
@@ -94,7 +92,6 @@ public class ChatController
         _getModel = getModel;
         _logService = logService;
         _configService = configService;
-        _httpClientService = httpClientService;
         _domainModelService = domainModelService;
         _microflowService = microflowService;
         _activitiesService = activitiesService;
@@ -292,7 +289,7 @@ public class ChatController
 
         if (_claudeApi != null && model == _lastInitializedModel) return;
 
-        _claudeApi = new ClaudeApiService(_httpClientService, _configService, _logService);
+        _claudeApi = new ClaudeApiService(_configService, _logService);
         _conversation ??= new ConversationManager();
         _promptBuilder = new PromptBuilder();
         _historyService ??= new ConversationHistoryService(_logService);
