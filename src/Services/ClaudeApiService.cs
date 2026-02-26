@@ -26,6 +26,11 @@ public class ClaudeApiService
     private const int MaxStreamTextBytes = 2 * 1024 * 1024;
     private const int MaxToolInputJsonBytes = 512 * 1024;
 
+    private static readonly HttpClient SharedHttpClient = new()
+    {
+        Timeout = TimeSpan.FromMinutes(5)
+    };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -150,9 +155,6 @@ public class ClaudeApiService
         var retryDelay = config.RetryDelaySeconds;
         _logService.Info($"AIDE Lite: [API] Retry config: max={maxRetries}, delay={retryDelay}s");
 
-        using var httpClient = new HttpClient();
-        httpClient.Timeout = TimeSpan.FromMinutes(5);
-
         for (var attempt = 0; attempt <= maxRetries; attempt++)
         {
             ct.ThrowIfCancellationRequested();
@@ -160,7 +162,7 @@ public class ClaudeApiService
             _logService.Info($"AIDE Lite: [API] Attempt {attempt + 1}/{maxRetries + 1}...");
 
             using var request = CreateHttpRequest(apiKey, requestJson, config.PromptCachingEnabled);
-            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await SharedHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             var statusCode = (int)response.StatusCode;
             _logService.Info($"AIDE Lite: [API] HTTP {statusCode} {response.StatusCode}");
 

@@ -26,7 +26,7 @@
             var dataCode = escaped.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
             codeBlocks.push(
                 '<div class="code-block-wrapper" data-code="' + dataCode + '">' +
-                '<button class="code-copy-btn" title="Copy code" onclick="AIDE.copyCodeBlock(this)">&#x2398;</button>' +
+                '<button class="code-copy-btn" title="Copy code">&#x2398;</button>' +
                 '<pre><code class="language-' + (lang || '') + '">' + escaped + '</code></pre>' +
                 '</div>'
             );
