@@ -48,16 +48,26 @@ public partial class ConversationHistoryService
     // DPAPI encryption for conversation history — same entropy as API key storage
     private static readonly byte[] DpapiEntropy = "AideLite-ConversationHistory-2026"u8.ToArray();
 
+    private static readonly bool IsWindows = OperatingSystem.IsWindows();
+
     private static byte[] EncryptData(string plainText)
     {
         var bytes = Encoding.UTF8.GetBytes(plainText);
-        return ProtectedData.Protect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
+        if (IsWindows)
+            return ProtectedData.Protect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
+        // macOS/Linux: store as-is (no OS-level encryption available)
+        return bytes;
     }
 
     private static string DecryptData(byte[] encrypted)
     {
-        var decrypted = ProtectedData.Unprotect(encrypted, DpapiEntropy, DataProtectionScope.CurrentUser);
-        return Encoding.UTF8.GetString(decrypted);
+        if (IsWindows)
+        {
+            var decrypted = ProtectedData.Unprotect(encrypted, DpapiEntropy, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(decrypted);
+        }
+        // macOS/Linux: data is not encrypted
+        return Encoding.UTF8.GetString(encrypted);
     }
 
     public void SaveConversation(SavedConversation conversation)
