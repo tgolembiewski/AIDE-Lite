@@ -52,7 +52,7 @@ public class AideLiteWebServerExtension : WebServerExtension
             {
                 response.StatusCode = 404;
                 response.ContentType = "text/plain";
-                var notFound = Encoding.UTF8.GetBytes("Not found");
+                var notFound = Encoding.UTF8.GetBytes($"File not found: {relativePath}");
                 response.ContentLength64 = notFound.Length;
                 await response.OutputStream.WriteAsync(notFound, cancellationToken);
                 return;

@@ -25,7 +25,6 @@ public class AideLitePaneExtension : DockablePaneExtension
 
     private readonly IDockingWindowService _dockingService;
     private readonly ILogService _logService;
-    private readonly IHttpClientService _httpClientService;
     private readonly IDomainModelService _domainModelService;
     private readonly IMicroflowService _microflowService;
     private readonly IMicroflowActivitiesService _activitiesService;
@@ -52,7 +51,6 @@ public class AideLitePaneExtension : DockablePaneExtension
     {
         _dockingService = dockingService;
         _logService = logService;
-        _httpClientService = httpClientService;
         _domainModelService = domainModelService;
         _microflowService = microflowService;
         _activitiesService = activitiesService;
@@ -74,7 +72,6 @@ public class AideLitePaneExtension : DockablePaneExtension
             () => CurrentApp,
             _logService,
             _configService,
-            _httpClientService,
             _domainModelService,
             _microflowService,
             _activitiesService,
@@ -164,6 +161,12 @@ public class AideLitePaneExtension : DockablePaneExtension
             "constant" or "constants$constant" => "constant",
             "enumeration" or "enumerations$enumeration" => "enumeration",
             "javaaction" or "javaactions$javaaction" => "java_action",
+            "nanoflow" or "microflows$nanoflow" => "nanoflow",
+            "scheduledevent" or "scheduledevents$scheduledevent" => "scheduled_event",
+            "publishedrestservice" or "rest$publishedrestservice" => "rest_service",
+            "snippet" or "pages$snippet" => "snippet",
+            "layout" or "pages$layout" => "layout",
+            "rule" or "microflows$rule" => "rule",
             _ => e.DocumentType ?? "document"
         };
 

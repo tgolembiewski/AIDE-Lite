@@ -17,7 +17,6 @@ namespace AideLite.Services;
 [SupportedOSPlatform("windows")]
 public class ClaudeApiService
 {
-    private readonly IHttpClientService _httpClientService;
     private readonly ConfigurationService _configService;
     private readonly ILogService _logService;
     private CancellationTokenSource? _currentCts;
@@ -27,6 +26,11 @@ public class ClaudeApiService
     private const int MaxStreamTextBytes = 2 * 1024 * 1024;
     private const int MaxToolInputJsonBytes = 512 * 1024;
 
+    private static readonly HttpClient SharedHttpClient = new()
+    {
+        Timeout = TimeSpan.FromMinutes(5)
+    };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -34,11 +38,9 @@ public class ClaudeApiService
     };
 
     public ClaudeApiService(
-        IHttpClientService httpClientService,
         ConfigurationService configService,
         ILogService logService)
     {
-        _httpClientService = httpClientService;
         _configService = configService;
         _logService = logService;
     }
@@ -159,11 +161,8 @@ public class ClaudeApiService
 
             _logService.Info($"AIDE Lite: [API] Attempt {attempt + 1}/{maxRetries + 1}...");
 
-            using var httpClient = _httpClientService.CreateHttpClient();
-            httpClient.Timeout = TimeSpan.FromMinutes(5);
-
             using var request = CreateHttpRequest(apiKey, requestJson, config.PromptCachingEnabled);
-            using var response = await httpClient.SendAsync(request, ct);
+            using var response = await SharedHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             var statusCode = (int)response.StatusCode;
             _logService.Info($"AIDE Lite: [API] HTTP {statusCode} {response.StatusCode}");
 

@@ -23,8 +23,9 @@
         html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function (m, lang, code) {
             var idx = codeBlocks.length;
             var escaped = AIDE.escapeHtml(code);
+            var dataCode = escaped.replace(/"/g, '&quot;').replace(/\n/g, '&#10;');
             codeBlocks.push(
-                '<div class="code-block-wrapper">' +
+                '<div class="code-block-wrapper" data-code="' + dataCode + '">' +
                 '<button class="code-copy-btn" title="Copy code">&#x2398;</button>' +
                 '<pre><code class="language-' + (lang || '') + '">' + escaped + '</code></pre>' +
                 '</div>'
@@ -83,11 +84,11 @@
             var row = cells.map(function (c) { return '<' + tag + '>' + c + '</' + tag + '>'; }).join('');
             return '<tr>' + row + '</tr>';
         });
+        html = html.replace(/<!-- table separator -->\s*/g, '');
         html = html.replace(/((<tr>[\s\S]*?<\/tr>\s*)+)/g, function () {
             tableIsHeader = true;
             return '<table>' + arguments[0] + '</table>';
         });
-        html = html.replace(/<!-- table separator -->\s*/g, '');
 
         // Paragraphs
         html = html.replace(/\n\n/g, '</p><p>');
@@ -110,6 +111,10 @@
 
         // Line breaks
         html = html.replace(/\n/g, '<br>');
+
+        // Clean up stray <br> tags adjacent to block-level elements
+        html = html.replace(/(<br>\s*)+(<\/?(?:table|tr|th|td|p|h[1-3]|ul|ol|li|blockquote|div)[\s>\/])/gi, '$2');
+        html = html.replace(/(<\/(?:table|tr|th|td|p|h[1-3]|ul|ol|li|blockquote|div)>)(\s*<br>)+/gi, '$1');
 
         html = AIDE.linkifyDocumentReferences(html);
 
@@ -216,13 +221,59 @@
         });
     };
 
+    AIDE.copyToClipboard = function (text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text).catch(function () {
+                return AIDE.copyFallback(text);
+            });
+        }
+        return AIDE.copyFallback(text);
+    };
+
+    AIDE.copyFallback = function (text) {
+        return new Promise(function (resolve, reject) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy') ? resolve() : reject();
+            } catch (e) {
+                reject(e);
+            } finally {
+                document.body.removeChild(ta);
+            }
+        });
+    };
+
     AIDE.copyCodeBlock = function (btn) {
         var wrapper = btn.closest('.code-block-wrapper');
         if (!wrapper) return;
-        var code = wrapper.querySelector('code');
-        if (!code) return;
-        var text = code.textContent;
-        navigator.clipboard.writeText(text).then(function () {
+
+        // Read raw code from data attribute (preserves newlines/tabs reliably)
+        var text = wrapper.getAttribute('data-code');
+        if (!text) {
+            var code = wrapper.querySelector('code');
+            text = code ? code.textContent : '';
+        }
+
+        var escapedLines = AIDE.escapeHtml(text).replace(/\n/g, '<br>');
+        var styledHtml = '<div style="background:#1e1e2e;color:#cdd6f4;padding:10px;border-radius:6px;margin:6px 0;font-family:&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;font-size:12px;white-space:pre;">' +
+            escapedLines +
+            '</div>';
+
+        var copyPromise = (typeof ClipboardItem !== 'undefined' && navigator.clipboard && navigator.clipboard.write)
+            ? navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': new Blob([styledHtml], { type: 'text/html' }),
+                    'text/plain': new Blob([text], { type: 'text/plain' })
+                })
+            ]).catch(function () { return AIDE.copyToClipboard(text); })
+            : AIDE.copyToClipboard(text);
+
+        copyPromise.then(function () {
             btn.textContent = '\u2713';
             setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
         }).catch(function () {
@@ -245,12 +296,34 @@
             AIDE.inlineStylesForCopy(clone);
 
             var styledHtml = '<div style="font-family:system-ui,-apple-system,sans-serif;font-size:13px;line-height:1.5;color:#1a1a2e;">' + clone.innerHTML + '</div>';
-            var htmlBlob = new Blob([styledHtml], { type: 'text/html' });
-            var textBlob = new Blob([md], { type: 'text/plain' });
 
-            navigator.clipboard.write([
-                new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
-            ]).then(function () {
+            var richCopy = (typeof ClipboardItem !== 'undefined' && navigator.clipboard && navigator.clipboard.write)
+                ? navigator.clipboard.write([
+                    new ClipboardItem({
+                        'text/html': new Blob([styledHtml], { type: 'text/html' }),
+                        'text/plain': new Blob([md], { type: 'text/plain' })
+                    })
+                ]).catch(function () { return AIDE.copyToClipboard(md); })
+                : AIDE.copyToClipboard(md);
+
+            richCopy.then(function () {
+                btn.textContent = '\u2713';
+                setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
+            }).catch(function () {
+                btn.textContent = '!';
+                setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
+            });
+        });
+        div.appendChild(btn);
+    };
+
+    AIDE.addPlainCopyButton = function (div, text) {
+        var btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.title = 'Copy text';
+        btn.innerHTML = '&#x2398;';
+        btn.addEventListener('click', function () {
+            AIDE.copyToClipboard(text).then(function () {
                 btn.textContent = '\u2713';
                 setTimeout(function () { btn.innerHTML = '&#x2398;'; }, 1500);
             }).catch(function () {

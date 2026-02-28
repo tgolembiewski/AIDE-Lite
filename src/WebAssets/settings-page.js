@@ -7,14 +7,20 @@
 (function () {
     'use strict';
 
+    var isWebView2 = !!(window.chrome && window.chrome.webview);
+    var isWebKit = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.studioPro);
+
     function sendToBackend(type, payload) {
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage({ message: type, data: payload || {} });
+        var msg = { message: type, data: payload || {} };
+        if (isWebView2) {
+            window.chrome.webview.postMessage(msg);
+        } else if (isWebKit) {
+            window.webkit.messageHandlers.studioPro.postMessage(JSON.stringify(msg));
         }
     }
 
     function handleMessage(event) {
-        var envelope = event.data;
+        var envelope = (typeof event === 'string') ? JSON.parse(event) : (event.data || event);
         if (!envelope || typeof envelope.message !== 'string') return;
 
         var type = envelope.message;
@@ -59,10 +65,14 @@
     });
 
     // Per Mendix API docs: register message handler, then post MessageListenerRegistered
-    if (window.chrome && window.chrome.webview) {
+    if (isWebView2) {
         window.chrome.webview.addEventListener('message', handleMessage);
-        sendToBackend('MessageListenerRegistered');
+    } else if (isWebKit) {
+        window.WKPostMessage = function (json) {
+            handleMessage(json);
+        };
     }
+    sendToBackend('MessageListenerRegistered');
 
     // Request current settings
     sendToBackend('get_settings', {});

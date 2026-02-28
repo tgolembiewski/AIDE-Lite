@@ -163,27 +163,39 @@ public class ConfigurationService
     // Entropy ensures keys encrypted by other DPAPI-using apps cannot be cross-decrypted
     private static readonly byte[] DpapiEntropy = "AideLite-MendixExtension-2026"u8.ToArray();
 
+    private static readonly bool IsWindows = OperatingSystem.IsWindows();
+
     private static string EncryptApiKey(string apiKey)
     {
         var bytes = Encoding.UTF8.GetBytes(apiKey);
-        var encrypted = ProtectedData.Protect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
-        return Convert.ToBase64String(encrypted);
+        if (IsWindows)
+        {
+            var encrypted = ProtectedData.Protect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
+            return Convert.ToBase64String(encrypted);
+        }
+        // macOS/Linux: Base64 obfuscation (no OS-level encryption available)
+        return Convert.ToBase64String(bytes);
     }
 
     private static string DecryptApiKey(string encrypted)
     {
         var bytes = Convert.FromBase64String(encrypted);
-        // Backward-compatible decryption: try entropy first, then without (pre-entropy versions)
-        try
+        if (IsWindows)
         {
-            var decrypted = ProtectedData.Unprotect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
-            return Encoding.UTF8.GetString(decrypted);
+            // Backward-compatible decryption: try entropy first, then without (pre-entropy versions)
+            try
+            {
+                var decrypted = ProtectedData.Unprotect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
+                return Encoding.UTF8.GetString(decrypted);
+            }
+            catch (CryptographicException)
+            {
+                // Key was encrypted without entropy (from older version) - try without
+                var decrypted = ProtectedData.Unprotect(bytes, null, DataProtectionScope.CurrentUser);
+                return Encoding.UTF8.GetString(decrypted);
+            }
         }
-        catch (CryptographicException)
-        {
-            // Key was encrypted without entropy (from older version) - try without
-            var decrypted = ProtectedData.Unprotect(bytes, null, DataProtectionScope.CurrentUser);
-            return Encoding.UTF8.GetString(decrypted);
-        }
+        // macOS/Linux: Base64 decode
+        return Encoding.UTF8.GetString(bytes);
     }
 }

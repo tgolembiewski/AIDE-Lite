@@ -60,6 +60,7 @@
             _state.pendingImages = [];
             _state.pendingFiles = [];
             _state.pendingDocuments = [];
+            if (_state.retryCountdownInterval) clearInterval(_state.retryCountdownInterval);
             _state.retryCountdownInterval = null;
             _state.retryAttemptCount = 0;
             _state.autoLoadPending = false;

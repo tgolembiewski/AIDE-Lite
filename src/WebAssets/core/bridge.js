@@ -1,22 +1,27 @@
 // ============================================================================
 // AIDE Lite - WebView Communication Bridge
-// C# <-> JS message passing via WebView2 PostMessage protocol.
+// C# <-> JS message passing via WebView2 (Windows) or WKWebView (macOS).
 // ============================================================================
 (function (AIDE) {
     'use strict';
 
     var state = AIDE.state;
+    var isWebView2 = !!(window.chrome && window.chrome.webview);
+    var isWebKit = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.studioPro);
 
     AIDE.sendToBackend = function (type, payload) {
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage({ message: type, data: payload || {} });
+        var msg = { message: type, data: payload || {} };
+        if (isWebView2) {
+            window.chrome.webview.postMessage(msg);
+        } else if (isWebKit) {
+            window.webkit.messageHandlers.studioPro.postMessage(JSON.stringify(msg));
         } else {
             console.log('WebView bridge not available. Message:', type, payload);
         }
     };
 
     AIDE.handleMessage = function (event) {
-        var envelope = event.data;
+        var envelope = (typeof event === 'string') ? JSON.parse(event) : (event.data || event);
         if (!envelope || typeof envelope.message !== 'string') return;
         var type = envelope.message;
         var data = envelope.data;
@@ -86,6 +91,9 @@
             case 'set_view_mode':
                 AIDE.handleSetViewMode(data);
                 break;
+            case 'toast':
+                AIDE.showToast(data.message);
+                break;
             case 'restore_view_state':
                 AIDE.handleRestoreViewState(data);
                 break;
@@ -93,10 +101,25 @@
     };
 
     AIDE.initBridge = function () {
-        if (window.chrome && window.chrome.webview) {
+        if (isWebView2) {
             window.chrome.webview.addEventListener('message', AIDE.handleMessage);
-            AIDE.sendToBackend('MessageListenerRegistered');
+        } else if (isWebKit) {
+            // WKWebView batches evaluateJavaScript calls and executes them
+            // all before yielding to the render loop. Buffer messages and
+            // drain one per animation frame for visible streaming output.
+            var wkQueue = [];
+            var wkDraining = false;
+            function wkDrain() {
+                if (wkQueue.length === 0) { wkDraining = false; return; }
+                AIDE.handleMessage(wkQueue.shift());
+                requestAnimationFrame(wkDrain);
+            }
+            window.WKPostMessage = function (json) {
+                wkQueue.push(json);
+                if (!wkDraining) { wkDraining = true; requestAnimationFrame(wkDrain); }
+            };
         }
+        AIDE.sendToBackend('MessageListenerRegistered');
     };
 
 })(window.AIDE = window.AIDE || {});
