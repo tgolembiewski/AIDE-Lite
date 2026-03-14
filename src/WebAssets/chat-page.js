@@ -19,11 +19,7 @@
     AIDE.dom = {
         chatArea: document.getElementById('chatArea'),
         chatInput: document.getElementById('chatInput'),
-        modeSelect: document.getElementById('modeSelect'),
         sendBtn: document.getElementById('sendBtn'),
-        refreshBtn: document.getElementById('refreshBtn'),
-        newChatBtn: document.getElementById('newChatBtn'),
-        settingsBtn: document.getElementById('settingsBtn'),
         settingsModal: document.getElementById('settingsModal'),
         saveSettingsBtn: document.getElementById('saveSettingsBtn'),
         cancelSettingsBtn: document.getElementById('cancelSettingsBtn'),
@@ -36,9 +32,7 @@
         welcomeScreen: document.getElementById('welcomeScreen'),
         processingBar: document.getElementById('processingBar'),
         processingLabel: document.getElementById('processingLabel'),
-        themeToggleBtn: document.getElementById('themeToggleBtn'),
         themeSelect: document.getElementById('themeSelect'),
-        historyBtn: document.getElementById('historyBtn'),
         historyModal: document.getElementById('historyModal'),
         historyList: document.getElementById('historyList'),
         historyCloseBtn: document.getElementById('historyCloseBtn'),
@@ -46,7 +40,6 @@
         contextUsage: document.getElementById('contextUsage'),
         contextUsageFill: document.getElementById('contextUsageFill'),
         contextUsageLabel: document.getElementById('contextUsageLabel'),
-        exportBtn: document.getElementById('exportBtn'),
         exportModal: document.getElementById('exportModal'),
         exportDownloadBtn: document.getElementById('exportDownloadBtn'),
         exportCancelBtn: document.getElementById('exportCancelBtn'),
@@ -57,7 +50,6 @@
         imagePreview: document.getElementById('imagePreview'),
         attachBtn: document.getElementById('attachBtn'),
         attachFileInput: document.getElementById('attachFileInput'),
-        helpBtn: document.getElementById('helpBtn'),
         helpModal: document.getElementById('helpModal'),
         helpCloseBtn: document.getElementById('helpCloseBtn'),
         helpOverlay: document.getElementById('helpOverlay'),
@@ -68,48 +60,56 @@
         consentModal: document.getElementById('consentModal'),
         consentAcceptBtn: document.getElementById('consentAcceptBtn'),
         consentDeclineBtn: document.getElementById('consentDeclineBtn'),
-        privacyBtn: document.getElementById('privacyBtn'),
         privacyModal: document.getElementById('privacyModal'),
         privacyCloseBtn: document.getElementById('privacyCloseBtn'),
         privacyOverlay: document.getElementById('privacyOverlay'),
-        toggleViewBtn: document.getElementById('toggleViewBtn')
+        // Hamburger menu
+        menuBtn: document.getElementById('menuBtn'),
+        menuDropdown: document.getElementById('menuDropdown'),
+        menuThemeIcon: document.getElementById('menuThemeIcon'),
+        menuThemeLabel: document.getElementById('menuThemeLabel')
     };
 
     var d = AIDE.dom;
 
-    // --- Event Listeners ---
-    d.modeSelect.addEventListener('change', function () {
-        d.chatInput.placeholder = d.modeSelect.value === 'ask'
-            ? 'Ask mode \u2014 read-only, no changes to your app...'
-            : 'Agent mode \u2014 can read and modify your app...';
+    // --- Hamburger Menu ---
+    // Store current mode (replaces the old modeSelect dropdown)
+    state.set('currentMode', 'agent');
+
+    d.menuBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        d.menuDropdown.classList.toggle('hidden');
     });
 
-    d.sendBtn.addEventListener('click', AIDE.sendMessage);
-
-    d.stopBtn.addEventListener('click', function () {
-        AIDE.sendToBackend('cancel');
-        AIDE.endStream();
+    // Close menu on outside click
+    document.addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+    });
+    d.menuDropdown.addEventListener('click', function (e) {
+        e.stopPropagation();
     });
 
-    d.chatInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            AIDE.sendMessage();
-        }
+    // Mode radio buttons in menu
+    document.querySelectorAll('#menuDropdown input[name="mode"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            state.set('currentMode', radio.value);
+            d.chatInput.placeholder = radio.value === 'ask'
+                ? 'Ask mode \u2014 read-only, no changes to your app...'
+                : 'Agent mode \u2014 can read and modify your app...';
+            d.menuDropdown.classList.add('hidden');
+        });
     });
 
-    d.chatInput.addEventListener('input', function () {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, AIDE.CONST.MAX_TEXTAREA_HEIGHT) + 'px';
-    });
-
-    d.refreshBtn.addEventListener('click', function () {
+    // Menu items
+    document.getElementById('menuRefreshBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
         d.contextDot.className = 'status-dot loading';
         d.contextText.textContent = 'Loading context...';
         AIDE.sendToBackend('get_context');
     });
 
-    d.newChatBtn.addEventListener('click', function () {
+    document.getElementById('menuNewChatBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
         if (state.get('isStreaming')) {
             AIDE.sendToBackend('cancel');
             AIDE.endStream();
@@ -134,17 +134,74 @@
         AIDE.sendToBackend('new_chat');
     });
 
-    d.settingsBtn.addEventListener('click', AIDE.openSettings);
+    document.getElementById('menuExportBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+        AIDE.openExport();
+    });
+
+    document.getElementById('menuHistoryBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+        AIDE.openHistory();
+    });
+
+    document.getElementById('menuToggleViewBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+        AIDE.sendToBackend('toggle_view');
+    });
+
+    document.getElementById('menuThemeBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+        var newTheme = state.get('currentTheme') === 'dark' ? 'light' : 'dark';
+        AIDE.applyTheme(newTheme);
+        AIDE.sendToBackend('save_settings', { theme: newTheme });
+        AIDE.updateMenuThemeLabel();
+    });
+
+    document.getElementById('menuSettingsBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+        AIDE.openSettings();
+    });
+
+    document.getElementById('menuPrivacyBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+        AIDE.openPrivacy();
+    });
+
+    document.getElementById('menuHelpBtn').addEventListener('click', function () {
+        d.menuDropdown.classList.add('hidden');
+        AIDE.openHelp();
+    });
+
+    AIDE.updateMenuThemeLabel = function () {
+        if (d.menuThemeIcon && d.menuThemeLabel) {
+            var isDark = state.get('currentTheme') === 'dark';
+            d.menuThemeIcon.innerHTML = isDark ? '&#x2600;' : '&#x1F319;';
+            d.menuThemeLabel.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+        }
+    };
+
+    // --- Event Listeners ---
+    d.sendBtn.addEventListener('click', AIDE.sendMessage);
+
+    d.stopBtn.addEventListener('click', function () {
+        AIDE.sendToBackend('cancel');
+        AIDE.endStream();
+    });
+
+    d.chatInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            AIDE.sendMessage();
+        }
+    });
+
+    d.chatInput.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, AIDE.CONST.MAX_TEXTAREA_HEIGHT) + 'px';
+    });
+
     d.saveSettingsBtn.addEventListener('click', AIDE.saveSettings);
     d.cancelSettingsBtn.addEventListener('click', AIDE.closeSettings);
-
-    if (d.themeToggleBtn) {
-        d.themeToggleBtn.addEventListener('click', function () {
-            var newTheme = state.get('currentTheme') === 'dark' ? 'light' : 'dark';
-            AIDE.applyTheme(newTheme);
-            AIDE.sendToBackend('save_settings', { theme: newTheme });
-        });
-    }
 
     if (d.themeSelect) {
         d.themeSelect.addEventListener('change', function () {
@@ -152,7 +209,6 @@
         });
     }
 
-    if (d.historyBtn) d.historyBtn.addEventListener('click', AIDE.openHistory);
     if (d.historyCloseBtn) d.historyCloseBtn.addEventListener('click', AIDE.closeHistory);
     if (d.historyOverlay) d.historyOverlay.addEventListener('click', AIDE.closeHistory);
 
@@ -175,12 +231,10 @@
         if (confirmClearModal) confirmClearModal.classList.add('hidden');
     });
 
-    if (d.exportBtn) d.exportBtn.addEventListener('click', AIDE.openExport);
     if (d.exportDownloadBtn) d.exportDownloadBtn.addEventListener('click', AIDE.exportChat);
     if (d.exportCancelBtn) d.exportCancelBtn.addEventListener('click', AIDE.closeExport);
     if (d.exportOverlay) d.exportOverlay.addEventListener('click', AIDE.closeExport);
 
-    if (d.helpBtn) d.helpBtn.addEventListener('click', AIDE.openHelp);
     if (d.helpCloseBtn) d.helpCloseBtn.addEventListener('click', AIDE.closeHelp);
     if (d.helpOverlay) d.helpOverlay.addEventListener('click', AIDE.closeHelp);
 
@@ -207,16 +261,8 @@
         if (d.consentModal) d.consentModal.classList.add('hidden');
     });
 
-    if (d.privacyBtn) d.privacyBtn.addEventListener('click', AIDE.openPrivacy);
     if (d.privacyCloseBtn) d.privacyCloseBtn.addEventListener('click', AIDE.closePrivacy);
     if (d.privacyOverlay) d.privacyOverlay.addEventListener('click', AIDE.closePrivacy);
-
-    // Toggle view button (button is disabled during streaming via views/chat.js)
-    if (d.toggleViewBtn) {
-        d.toggleViewBtn.addEventListener('click', function () {
-            AIDE.sendToBackend('toggle_view');
-        });
-    }
 
     // Detect initial mode from URL query param (?mode=pane|tab)
     (function () {
@@ -227,6 +273,17 @@
         }
         AIDE.updateToggleButton();
     })();
+
+    // Settings tab switching
+    document.querySelectorAll('.settings-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('.settings-tab').forEach(function (t) { t.classList.remove('active'); });
+            document.querySelectorAll('.settings-panel').forEach(function (p) { p.classList.remove('active'); });
+            tab.classList.add('active');
+            var panel = document.getElementById('settingsPanel-' + tab.getAttribute('data-tab'));
+            if (panel) panel.classList.add('active');
+        });
+    });
 
     // Close settings modal on overlay click
     document.querySelector('#settingsModal .modal-overlay')?.addEventListener('click', AIDE.closeSettings);

@@ -220,7 +220,7 @@
         }
 
         lines.push('---');
-        lines.push('*Exported from AIDE Lite v1.3.0*');
+        lines.push('*Exported from AIDE Lite v1.3.1*');
 
         var markdown = lines.join('\n');
         var blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });

@@ -47,4 +47,7 @@ public class AideLiteConfig
 
     [JsonPropertyName("autoLoadLastConversation")]
     public bool AutoLoadLastConversation { get; set; } = true;
+
+    [JsonPropertyName("includeMarketplaceModules")]
+    public bool IncludeMarketplaceModules { get; set; } = false;
 }

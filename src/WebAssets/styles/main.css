@@ -128,7 +128,6 @@ body {
 /* === Header (stays dark in both themes) === */
 .header {
     display: flex;
-    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
@@ -136,6 +135,7 @@ body {
     background: #1a1a2e;
     color: #fff;
     flex-shrink: 0;
+    position: relative;
 }
 .header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .header-left .title { white-space: nowrap; }
@@ -172,6 +172,108 @@ body {
 .icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .icon-btn:disabled:hover { background: none; color: #ccc; }
+
+/* Hamburger menu button */
+.menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+}
+.hamburger-icon {
+    display: block;
+    width: 16px;
+    height: 2px;
+    background: #ccc;
+    position: relative;
+}
+.hamburger-icon::before,
+.hamburger-icon::after {
+    content: "";
+    display: block;
+    width: 16px;
+    height: 2px;
+    background: #ccc;
+    position: absolute;
+    left: 0;
+}
+.hamburger-icon::before { top: -5px; }
+.hamburger-icon::after { top: 5px; }
+.menu-btn:hover .hamburger-icon,
+.menu-btn:hover .hamburger-icon::before,
+.menu-btn:hover .hamburger-icon::after { background: #fff; }
+
+/* Dropdown menu */
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 8px;
+    z-index: 900;
+    background: var(--bg-modal);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    min-width: 210px;
+    padding: 4px 0;
+}
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 14px;
+    border: none;
+    background: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+.menu-item:hover { background: var(--bg-surface); }
+.menu-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.menu-divider {
+    height: 1px;
+    background: var(--border-primary);
+    margin: 4px 0;
+}
+.menu-group {
+    padding: 4px 14px 8px;
+}
+.menu-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-hint);
+    margin-bottom: 4px;
+}
+.menu-radio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+.menu-radio input[type="radio"] {
+    margin: 0;
+    accent-color: #7c3aed;
+}
+.menu-radio small {
+    color: var(--text-hint);
+    font-size: 11px;
+    margin-left: auto;
+}
 
 /* === Context Bar === */
 .context-bar {
@@ -544,21 +646,6 @@ body {
     color: #7c3aed;
     background: rgba(124, 58, 237, 0.06);
 }
-.mode-select {
-    padding: 6px 4px;
-    border: 1px solid var(--border-input);
-    border-radius: 8px;
-    background: var(--bg-input);
-    color: var(--text-input);
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    outline: none;
-    align-self: flex-end;
-    min-width: 68px;
-}
-.mode-select:focus { border-color: #7c3aed; }
 #chatInput {
     flex: 1;
     border: 1px solid var(--border-input);
@@ -627,6 +714,8 @@ body {
     padding: 24px;
     width: 95%;
     max-width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 10px 40px var(--modal-shadow);
 }
 .modal-close-btn {
@@ -693,6 +782,45 @@ body {
 #confirmClearModal { z-index: 110; }
 .confirm-dialog { width: auto; max-width: 320px; text-align: center; }
 .confirm-dialog p { font-size: 13px; color: var(--text-primary); margin: 0 0 16px; line-height: 1.5; }
+
+/* === Settings Tabs === */
+.settings-dialog {
+    display: flex;
+    flex-direction: column;
+}
+.settings-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border-primary);
+    margin: 0 -24px 16px;
+    padding: 0 24px;
+}
+.settings-tab {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.settings-tab:hover {
+    color: var(--text-primary);
+}
+.settings-tab.active {
+    color: #7c3aed;
+    border-bottom-color: #7c3aed;
+}
+.settings-panel {
+    display: none;
+}
+.settings-panel.active {
+    display: block;
+}
 
 /* === Settings body (for modal dialog page) === */
 .settings-body { background: var(--bg-secondary); padding: 16px; color: var(--text-primary); }

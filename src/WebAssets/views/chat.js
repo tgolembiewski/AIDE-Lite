@@ -32,10 +32,9 @@
         AIDE.dom.sendBtn.disabled = true;
         AIDE.dom.sendBtn.classList.add('hidden');
         AIDE.dom.stopBtn.classList.remove('hidden');
-        if (AIDE.dom.toggleViewBtn) AIDE.dom.toggleViewBtn.disabled = true;
         AIDE.showProcessingBar('Thinking...');
 
-        var payload = { message: text, mode: AIDE.dom.modeSelect.value };
+        var payload = { message: text, mode: state.get('currentMode') || 'agent' };
         if (images.length > 0) {
             payload.images = images.map(function (img) {
                 return { base64: img.base64, mediaType: img.mediaType };
@@ -113,7 +112,6 @@
         AIDE.dom.sendBtn.disabled = false;
         AIDE.dom.sendBtn.classList.remove('hidden');
         AIDE.dom.stopBtn.classList.add('hidden');
-        if (AIDE.dom.toggleViewBtn) AIDE.dom.toggleViewBtn.disabled = false;
         AIDE.hideToolActivity();
         AIDE.hideProcessingBar();
         AIDE.autoSaveChatState();

@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using AideLite.ModelReaders;
 using AideLite.Models;
+using AideLite.Services;
 using Mendix.StudioPro.ExtensionsAPI.Model;
 using Mendix.StudioPro.ExtensionsAPI.Model.Microflows;
 using Mendix.StudioPro.ExtensionsAPI.Model.Pages;
@@ -18,11 +19,13 @@ public class SearchModelTool : IClaudeTool
 {
     private readonly IModel _model;
     private readonly AppContextExtractor _extractor;
+    private readonly ConfigurationService _configService;
 
     // Needs direct IModel access (not just extractor) to iterate all modules including folders
-    public SearchModelTool(IModel model, AppContextExtractor extractor)
+    public SearchModelTool(IModel model, AppContextExtractor extractor, ConfigurationService configService)
     {
         _model = model;
+        _configService = configService;
         _extractor = extractor;
     }
 
@@ -54,10 +57,11 @@ public class SearchModelTool : IClaudeTool
         var sb = new StringBuilder();
         var matchCount = 0;
 
-        // Walk every module, skipping Marketplace to avoid noisy results
+        var includeMarketplace = _configService.GetConfig().IncludeMarketplaceModules;
+        // Walk every module, skipping Marketplace unless setting is enabled
         foreach (var module in _model.Root.GetModules())
         {
-            if (module.FromAppStore) continue;
+            if (module.FromAppStore && !includeMarketplace) continue;
 
             if (elementType is "entity" or "all")
             {

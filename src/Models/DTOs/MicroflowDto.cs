@@ -142,7 +142,7 @@ public class MemberChangeDto
 /// <summary>
 /// Read-only representation of decisions, loops, merges, and other flow control.
 /// These elements can be READ via the Untyped Model API but cannot be CREATED
-/// through the Extensions API (confirmed absent v10.23.0-v11.6.2).
+/// through the Extensions API (confirmed absent v10.23.0-v11.7.0).
 /// </summary>
 public class FlowControlElementDto
 {

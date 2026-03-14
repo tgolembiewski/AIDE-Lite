@@ -7,13 +7,19 @@ using System.Text;
 using System.Text.Json.Nodes;
 using AideLite.ModelReaders;
 using AideLite.Models;
+using AideLite.Services;
 
 namespace AideLite.Tools;
 
 public class GetModulesTool : IClaudeTool
 {
     private readonly AppContextExtractor _extractor;
-    public GetModulesTool(AppContextExtractor extractor) => _extractor = extractor;
+    private readonly ConfigurationService _configService;
+    public GetModulesTool(AppContextExtractor extractor, ConfigurationService configService)
+    {
+        _extractor = extractor;
+        _configService = configService;
+    }
 
     public string Name => "get_modules";
     public string Description => "List all modules in the app with entity, microflow, and page counts";
@@ -26,7 +32,7 @@ public class GetModulesTool : IClaudeTool
 
     public ToolResult Execute(JsonObject input)
     {
-        var context = _extractor.ExtractAppContext();
+        var context = _extractor.ExtractAppContext(includeMarketplace: _configService.GetConfig().IncludeMarketplaceModules);
         var sb = new StringBuilder();
         foreach (var module in context.Modules)
         {

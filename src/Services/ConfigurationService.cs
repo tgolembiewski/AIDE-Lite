@@ -79,7 +79,7 @@ public class ConfigurationService
 
     private const int MaxTokensCeiling = 64000;
 
-    public void SaveConfig(string? apiKey, string? selectedModel, string? contextDepth, int? maxTokens, string? theme = null, int? retryMaxAttempts = null, int? retryDelaySeconds = null, int? maxToolRounds = null, bool? promptCachingEnabled = null, bool? autoRefreshContext = null, bool? autoLoadLastConversation = null)
+    public void SaveConfig(string? apiKey, string? selectedModel, string? contextDepth, int? maxTokens, string? theme = null, int? retryMaxAttempts = null, int? retryDelaySeconds = null, int? maxToolRounds = null, bool? promptCachingEnabled = null, bool? autoRefreshContext = null, bool? autoLoadLastConversation = null, bool? includeMarketplaceModules = null)
     {
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
@@ -115,6 +115,9 @@ public class ConfigurationService
 
         if (autoLoadLastConversation.HasValue)
             _cachedConfig.AutoLoadLastConversation = autoLoadLastConversation.Value;
+
+        if (includeMarketplaceModules.HasValue)
+            _cachedConfig.IncludeMarketplaceModules = includeMarketplaceModules.Value;
 
         SaveToDisk(_cachedConfig);
         _logService.Info("AIDE Lite: Configuration saved");
@@ -163,39 +166,27 @@ public class ConfigurationService
     // Entropy ensures keys encrypted by other DPAPI-using apps cannot be cross-decrypted
     private static readonly byte[] DpapiEntropy = "AideLite-MendixExtension-2026"u8.ToArray();
 
-    private static readonly bool IsWindows = OperatingSystem.IsWindows();
-
     private static string EncryptApiKey(string apiKey)
     {
         var bytes = Encoding.UTF8.GetBytes(apiKey);
-        if (IsWindows)
-        {
-            var encrypted = ProtectedData.Protect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
-            return Convert.ToBase64String(encrypted);
-        }
-        // macOS/Linux: Base64 obfuscation (no OS-level encryption available)
-        return Convert.ToBase64String(bytes);
+        var encrypted = ProtectedData.Protect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
+        return Convert.ToBase64String(encrypted);
     }
 
     private static string DecryptApiKey(string encrypted)
     {
         var bytes = Convert.FromBase64String(encrypted);
-        if (IsWindows)
+        // Backward-compatible decryption: try entropy first, then without (pre-entropy versions)
+        try
         {
-            // Backward-compatible decryption: try entropy first, then without (pre-entropy versions)
-            try
-            {
-                var decrypted = ProtectedData.Unprotect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
-                return Encoding.UTF8.GetString(decrypted);
-            }
-            catch (CryptographicException)
-            {
-                // Key was encrypted without entropy (from older version) - try without
-                var decrypted = ProtectedData.Unprotect(bytes, null, DataProtectionScope.CurrentUser);
-                return Encoding.UTF8.GetString(decrypted);
-            }
+            var decrypted = ProtectedData.Unprotect(bytes, DpapiEntropy, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(decrypted);
         }
-        // macOS/Linux: Base64 decode
-        return Encoding.UTF8.GetString(bytes);
+        catch (CryptographicException)
+        {
+            // Key was encrypted without entropy (from older version) - try without
+            var decrypted = ProtectedData.Unprotect(bytes, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(decrypted);
+        }
     }
 }

@@ -16,7 +16,13 @@ public record SystemPromptParts(string StaticInstructions, string AppContext);
 
 public class PromptBuilder
 {
-    private const string InstructionsTemplate = @"You are AIDE Lite, an AI assistant inside Mendix Studio Pro 10.24 LTS.
+#if MENDIX_V11
+    private const string StudioProVersion = "Mendix Studio Pro 11";
+#else
+    private const string StudioProVersion = "Mendix Studio Pro 10.24 LTS";
+#endif
+
+    private const string InstructionsTemplate = @"You are AIDE Lite, an AI assistant inside " + StudioProVersion + @".
 
 CAPABILITIES:
 - Read the full app model (modules, entities, attributes, associations, microflows, pages, enumerations)

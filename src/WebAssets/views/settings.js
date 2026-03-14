@@ -31,8 +31,10 @@
         if (data.promptCachingEnabled != null) document.getElementById('promptCachingCheckbox').checked = data.promptCachingEnabled;
         if (data.autoRefreshContext != null) document.getElementById('autoRefreshContextCheckbox').checked = data.autoRefreshContext;
         if (data.autoLoadLastConversation != null) document.getElementById('autoLoadLastConversationCheckbox').checked = data.autoLoadLastConversation;
+        if (data.includeMarketplaceModules != null) document.getElementById('includeMarketplaceCheckbox').checked = data.includeMarketplaceModules;
         if (data.hasKey) document.getElementById('apiKeyInput').placeholder = '********** (key saved)';
         if (data.theme) AIDE.applyTheme(data.theme);
+        if (AIDE.updateMenuThemeLabel) AIDE.updateMenuThemeLabel();
 
         if (!state.get('initialSettingsLoaded')) {
             state.set('initialSettingsLoaded', true);
@@ -67,6 +69,7 @@
         var promptCachingEnabled = document.getElementById('promptCachingCheckbox').checked;
         var autoRefreshContext = document.getElementById('autoRefreshContextCheckbox').checked;
         var autoLoadLastConversation = document.getElementById('autoLoadLastConversationCheckbox').checked;
+        var includeMarketplaceModules = document.getElementById('includeMarketplaceCheckbox').checked;
 
         AIDE.sendToBackend('save_settings', {
             apiKey: apiKey,
@@ -79,6 +82,7 @@
             promptCachingEnabled: promptCachingEnabled,
             autoRefreshContext: autoRefreshContext,
             autoLoadLastConversation: autoLoadLastConversation,
+            includeMarketplaceModules: includeMarketplaceModules,
             theme: theme
         });
 
@@ -101,13 +105,10 @@
         var current = theme === 'dark' ? 'dark' : 'light';
         state.set('currentTheme', current);
         document.body.classList.toggle('dark', current === 'dark');
-        if (AIDE.dom.themeToggleBtn) {
-            AIDE.dom.themeToggleBtn.innerHTML = current === 'dark' ? '&#x2600;' : '&#x1F319;';
-            AIDE.dom.themeToggleBtn.title = current === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
-        }
         if (AIDE.dom.themeSelect) {
             AIDE.dom.themeSelect.value = current;
         }
+        if (AIDE.updateMenuThemeLabel) AIDE.updateMenuThemeLabel();
     };
 
     // --- Consent & Privacy ---
